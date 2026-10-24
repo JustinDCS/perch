@@ -1,0 +1,24 @@
+{
+  "perch": 1,
+  "id": "jira-open-tickets",
+  "name": "Open tickets",
+  "kind": "rest",
+  "icon": "🎫",
+  "refreshSeconds": 120,
+  "request": {
+    "url": "https://your-site.atlassian.net/rest/api/3/search/approximate-count",
+    "method": "POST",
+    "auth": { "type": "basic", "user": "you@example.com", "secret": "jira-token" },
+    "body": { "jql": "project = DD AND statusCategory != Done" }
+  },
+  "display": {
+    "layout": "stat",
+    "value": "count",
+    "label": "Not done",
+    "thresholds": [
+      { "gte": 25, "tone": "danger" },
+      { "gte": 10, "tone": "warn" },
+      { "lte": 9, "tone": "good" }
+    ]
+  }
+}
