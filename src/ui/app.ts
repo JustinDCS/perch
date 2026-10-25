@@ -54,12 +54,44 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   new ResizeObserver(syncWindowSize).observe(card);
 
   // ---- avatar + status ---------------------------------------------------------------------
+  // After a long quiet spell the avatar falls asleep. Anything happening (music, an alert) or the
+  // pointer coming near wakes it.
+  const SLEEP_AFTER_MS = 10 * 60 * 1000;
+  let asleep = false;
+  let sleepTimer: ReturnType<typeof setTimeout> | undefined;
+  function wake(): void {
+    clearTimeout(sleepTimer);
+    sleepTimer = undefined;
+    if (asleep) {
+      asleep = false;
+      updateAvatar();
+    }
+  }
+
   function updateAvatar(): void {
     const alerts = [...tones.values()].filter((t) => t === "danger").length;
-    const state = alerts > 0 ? "attention" : musicPlaying ? "music" : "idle";
+    const busy = alerts > 0 || musicPlaying;
+    if (busy) {
+      asleep = false;
+      clearTimeout(sleepTimer);
+      sleepTimer = undefined;
+    } else if (!asleep && sleepTimer === undefined) {
+      sleepTimer = setTimeout(() => {
+        sleepTimer = undefined;
+        asleep = true;
+        updateAvatar();
+      }, SLEEP_AFTER_MS);
+    }
+    const state = alerts > 0 ? "attention" : musicPlaying ? "music" : asleep ? "asleep" : "idle";
     avatarView?.setState(state);
     status.textContent =
-      alerts > 0 ? `${alerts} need${alerts === 1 ? "s" : ""} attention` : musicPlaying ? "Playing" : "All quiet";
+      alerts > 0
+        ? `${alerts} need${alerts === 1 ? "s" : ""} attention`
+        : musicPlaying
+          ? "Playing"
+          : asleep
+            ? "Resting"
+            : "All quiet";
     status.dataset.state = state;
   }
 
@@ -161,6 +193,12 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     updateAvatar();
   }
 
+  for (const type of ["pointerenter", "pointerdown"] as const) {
+    card.addEventListener(type, () => {
+      wake();
+      updateAvatar(); // restarts the sleep timer
+    });
+  }
   settingsBtn.addEventListener("click", () => (view === "pills" ? showSettings() : showPills()));
   hideBtn.addEventListener("click", () => {
     if (inTauri) void getCurrentWindow().hide();

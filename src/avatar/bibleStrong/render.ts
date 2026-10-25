@@ -2,8 +2,7 @@
 // 2D approximation: the Studio draws a lit 3D shape, here the head turn is shown by sliding
 // and squeezing the face across the body, which reads well at 48 pixels.
 
-import type { AvatarView } from "../renderer";
-import type { AvatarStateName } from "../schema";
+import type { AvatarView, ViewState } from "../renderer";
 import { ease, locate, mixPose, pickAnimation, poseOf, type Pose } from "./pose";
 import type { BsAnimation, BsAvatar, BsSurface } from "./schema";
 
@@ -229,7 +228,7 @@ export function createBibleStrongView(avatar: BsAvatar): AvatarView {
     frame = requestAnimationFrame(loop);
   }
 
-  function setState(name: AvatarStateName): void {
+  function setState(name: ViewState): void {
     const picked = pickAnimation(avatar.animations, avatar.animationOrder, name);
     animation = picked ? avatar.animations[picked] : undefined;
     startedAt = performance.now();

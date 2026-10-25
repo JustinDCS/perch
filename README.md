@@ -18,7 +18,7 @@ What is in this first slice:
 | Transparent, always-on-top overlay window with tray icon | written, **verified on Windows 11** (overlay, tray build, window sizing) |
 | **Now-playing pill** (Windows media session: Spotify, Apple Music, browsers…) with title, artist, artwork, previous / play-pause / next, progress and seek | **verified on Windows 11 with Spotify** (metadata, artwork, play/pause, previous/next, progress) |
 | **REST/JSON pill** driven by a manifest (poll an API, map fields, colour by thresholds, secrets from Credential Manager, host approval) | **verified on Windows 11** with the public GitHub API (host approval, polling, stat layout); auth headers and secrets not yet tried live |
-| **Avatar** from an uploaded JSON file, reacting to idle / attention / music | working (tested in a browser) |
+| **Avatar** (Perch's own amber default, or an uploaded file) reacting to idle / music / attention / asleep | working in a browser; not yet seen on Windows |
 | Settings: toggle pills, set secrets, review approved hosts, import avatars | working (tested in a browser) |
 
 Verified so far, on Linux and in a headless browser: the safety rules in Rust (`cargo test -p perch-core`),
@@ -126,8 +126,9 @@ each state:
 | idle | `idle`, `listening`, `bored` |
 | music | `happy`, `excited`, `playful`, `celebrate`, `laughing` |
 | attention | `surprised`, `scared`, `curious`, `angry` |
+| asleep (after 10 quiet minutes) | `sleeping`, `drowsy`, `bored` |
 
-If none exist, the avatar's first animation is used. Perch draws a flat 2D version of the face (the Studio draws a lit 3D
+If none exist, the avatar's first animation is used. Perch's own default avatar is written in this same format, so it can be used as a starting point. Perch draws a flat 2D version of the face (the Studio draws a lit 3D
 shape), so it will look close to, not identical to, the Studio preview. Reduced-motion settings in Windows show a still face.
 
 This is a **file format reader only**. The checks (`src/avatar/bibleStrong/schema.ts`) and the player are Perch's own

@@ -120,3 +120,16 @@ describe("playback maths", () => {
     expect(pickAnimation(animations, ["idle", "happy"], "attention")).toBe("idle");
   });
 });
+
+import { DEFAULT_AVATAR_DEFINITION, DEFAULT_BS_AVATAR } from "./defaultAvatar";
+
+describe("built-in avatar", () => {
+  it("is a valid Bible Strong definition with an animation for every Perch state", () => {
+    const result = validateBibleStrongAvatar(JSON.parse(JSON.stringify(DEFAULT_AVATAR_DEFINITION)));
+    expect(result.ok ? [] : result.errors).toEqual([]);
+    for (const state of ["idle", "music", "attention", "asleep"] as const) {
+      expect(pickAnimation(DEFAULT_BS_AVATAR.animations, DEFAULT_BS_AVATAR.animationOrder, state)).toBeDefined();
+    }
+    expect(pickAnimation(DEFAULT_BS_AVATAR.animations, DEFAULT_BS_AVATAR.animationOrder, "asleep")).toBe("sleeping");
+  });
+});

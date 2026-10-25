@@ -4,6 +4,9 @@
 
 import type { Avatar, AvatarStateName } from "./schema";
 
+/** The states an avatar view can show. "asleep" is for long quiet spells; Perch's older avatar format has no such look, so it shows idle. */
+export type ViewState = AvatarStateName | "asleep";
+
 const SVG_NS = "http://www.w3.org/2000/svg";
 
 type Attrs = Record<string, string | number>;
@@ -16,7 +19,7 @@ function svgEl<K extends keyof SVGElementTagNameMap>(tag: K, attrs: Attrs = {}):
 
 export interface AvatarView {
   el: SVGSVGElement;
-  setState(name: AvatarStateName): void;
+  setState(name: ViewState): void;
   destroy(): void;
 }
 
@@ -84,8 +87,8 @@ export function createAvatarView(avatar: Avatar): AvatarView {
   };
   scheduleBlink();
 
-  function setState(name: AvatarStateName): void {
-    const state = avatar.states[name];
+  function setState(name: ViewState): void {
+    const state = avatar.states[name === "asleep" ? "idle" : name];
     body.setAttribute("fill", state.bodyColor ?? avatar.body.color);
     for (const eye of [left, right]) eye.setAttribute("ry", String(Math.max(0.6, eyeRx * state.eyeOpen)));
     eyesOuter.setAttribute("transform", `translate(${state.eyeOffsetX} ${state.eyeOffsetY})`);

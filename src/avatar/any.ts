@@ -3,6 +3,7 @@
 
 import { type Result, fail, ok } from "../lib/validate";
 import { createBibleStrongView } from "./bibleStrong/render";
+import { DEFAULT_BS_AVATAR } from "./bibleStrong/defaultAvatar";
 import { type BsAvatar, looksLikeBibleStrong, validateBibleStrongAvatar } from "./bibleStrong/schema";
 import { type AvatarView, createAvatarView } from "./renderer";
 import { type Avatar, validateAvatar } from "./schema";
@@ -17,6 +18,8 @@ export function validateAnyAvatar(raw: unknown): Result<AnyAvatar> {
   const result = validateAvatar(raw);
   return result.ok ? ok({ kind: "perch", avatar: result.value }) : fail(...result.errors);
 }
+
+export const DEFAULT_ANY_AVATAR: AnyAvatar = { kind: "bible-strong", avatar: DEFAULT_BS_AVATAR };
 
 export function avatarName(a: AnyAvatar): string {
   return a.avatar.name;

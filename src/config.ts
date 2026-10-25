@@ -1,8 +1,7 @@
 // Loads pills and avatars from the user's config folder and validates them.
 // Bad files never crash the app: they are reported as problems in Settings instead.
 
-import { DEFAULT_AVATAR } from "./avatar/default";
-import { type AnyAvatar, validateAnyAvatar } from "./avatar/any";
+import { type AnyAvatar, DEFAULT_ANY_AVATAR, validateAnyAvatar } from "./avatar/any";
 import { ipc, errorText } from "./ipc";
 import { validatePill } from "./pills/manifest";
 import type { PillManifest } from "./pills/types";
@@ -91,5 +90,5 @@ export function resolveAvatar(config: Config, file: string | null): AnyAvatar {
     const entry = config.avatars.find((a) => a.file === file);
     if (entry) return entry.avatar;
   }
-  return { kind: "perch", avatar: DEFAULT_AVATAR };
+  return DEFAULT_ANY_AVATAR;
 }

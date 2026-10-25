@@ -79,6 +79,10 @@ input[type="checkbox"] {
 .status[data-state="attention"] {
   color: var(--danger);
 }
+.status[data-state="asleep"] {
+  color: var(--muted);
+  opacity: 0.8;
+}
 .status[data-state="music"] {
   color: var(--good);
 }

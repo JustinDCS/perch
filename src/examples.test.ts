@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { validateAvatar } from "./avatar/schema";
+import { validateAnyAvatar } from "./avatar/any";
 import { validatePill } from "./pills/manifest";
 
 const root = join(__dirname, "..", "examples");
@@ -27,7 +27,7 @@ describe("shipped examples stay valid", () => {
   });
 
   it.each(avatars.map((a) => [a.name, a.json] as const))("avatar %s", (_name, json) => {
-    const result = validateAvatar(json);
+    const result = validateAnyAvatar(json);
     expect(result.ok ? [] : result.errors).toEqual([]);
   });
 

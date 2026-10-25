@@ -138,6 +138,7 @@ export const STATE_ANIMATIONS = {
   idle: ["idle", "listening", "bored"],
   music: ["happy", "excited", "playful", "celebrate", "laughing"],
   attention: ["surprised", "scared", "curious", "angry"],
+  asleep: ["sleeping", "drowsy", "bored"],
 } as const;
 
 export function pickAnimation(
