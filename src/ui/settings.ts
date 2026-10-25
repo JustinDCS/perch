@@ -1,4 +1,4 @@
-import { validateAvatar } from "../avatar/schema";
+import { avatarName, validateAnyAvatar } from "../avatar/any";
 import { type Config } from "../config";
 import { errorText, ipc } from "../ipc";
 import { secretsOf } from "../pills/manifest";
@@ -139,7 +139,7 @@ export function renderSettings(ctx: SettingsContext): HTMLElement {
   const select = h("select", { class: "input", attrs: { "aria-label": "Avatar" } });
   select.append(h("option", { text: "Perch (built-in)", value: "" }));
   for (const entry of ctx.config.avatars) {
-    select.append(h("option", { text: `${entry.avatar.name} (${entry.file})`, value: entry.file }));
+    select.append(h("option", { text: `${avatarName(entry.avatar)} (${entry.file})`, value: entry.file }));
   }
   select.value = ctx.avatarFile ?? "";
   if (select.value !== (ctx.avatarFile ?? "")) select.value = "";
@@ -164,7 +164,7 @@ export function renderSettings(ctx: SettingsContext): HTMLElement {
       importErrors.append(errorList(["That file is not valid JSON."]));
       return;
     }
-    const result = validateAvatar(parsed);
+    const result = validateAnyAvatar(parsed);
     if (!result.ok) {
       importErrors.append(errorList(result.errors));
       return;

@@ -1,5 +1,6 @@
 import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
-import { createAvatarView, type AvatarView } from "../avatar/renderer";
+import { createView } from "../avatar/any";
+import type { AvatarView } from "../avatar/renderer";
 import { loadConfig, resolveAvatar, type Config } from "../config";
 import { inTauri, ipc } from "../ipc";
 import { hostOf } from "../pills/manifest";
@@ -65,7 +66,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   function renderAvatar(): void {
     avatarView?.destroy();
     clear(avatarSlot);
-    avatarView = createAvatarView(resolveAvatar(config, getAvatarFile()));
+    avatarView = createView(resolveAvatar(config, getAvatarFile()));
     avatarSlot.append(avatarView.el);
     updateAvatar();
   }

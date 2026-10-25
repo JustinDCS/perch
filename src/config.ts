@@ -2,7 +2,7 @@
 // Bad files never crash the app: they are reported as problems in Settings instead.
 
 import { DEFAULT_AVATAR } from "./avatar/default";
-import { type Avatar, validateAvatar } from "./avatar/schema";
+import { type AnyAvatar, validateAnyAvatar } from "./avatar/any";
 import { ipc, errorText } from "./ipc";
 import { validatePill } from "./pills/manifest";
 import type { PillManifest } from "./pills/types";
@@ -15,7 +15,7 @@ export interface Problem {
 
 export interface AvatarEntry {
   file: string;
-  avatar: Avatar;
+  avatar: AnyAvatar;
 }
 
 export interface Config {
@@ -78,7 +78,7 @@ export async function loadConfig(): Promise<Config> {
       problems.push({ kind: "avatar", file: file.name, errors: [`not valid JSON: ${parsed.error}`] });
       continue;
     }
-    const result = validateAvatar(parsed.value);
+    const result = validateAnyAvatar(parsed.value);
     if (result.ok) avatars.push({ file: file.name, avatar: result.value });
     else problems.push({ kind: "avatar", file: file.name, errors: result.errors });
   }
@@ -86,10 +86,10 @@ export async function loadConfig(): Promise<Config> {
   return { pills, avatars, problems };
 }
 
-export function resolveAvatar(config: Config, file: string | null): Avatar {
+export function resolveAvatar(config: Config, file: string | null): AnyAvatar {
   if (file) {
     const entry = config.avatars.find((a) => a.file === file);
     if (entry) return entry.avatar;
   }
-  return DEFAULT_AVATAR;
+  return { kind: "perch", avatar: DEFAULT_AVATAR };
 }

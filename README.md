@@ -114,6 +114,25 @@ An avatar is a body shape, eyes and a mouth, plus how they look in each state. S
 * Per state: `eyeOpen` (0 to 1.4), `eyeOffsetX/Y`, `mouth` (-1 frown to 1 smile), optional `bodyColor`,
   `animation` (`none`, `breathe`, `bounce`, `wiggle`, `pulse`) and `speed`.
 
+### Avatars from Bible Strong Avatar Lab
+
+Perch also reads the `.avatar.json` files exported by [Bible Strong Avatar Lab](https://github.com/smontlouis/bible-strong-avatar-lab)
+(schema `bible-strong/avatar-definition`, version 1). Make an avatar in their Studio, open its **Export** tab, and import
+the `.avatar.json` from **Settings → Avatar → Import avatar JSON**. Perch plays one of the avatar's own animations for
+each state:
+
+| Perch state | Animations tried, in order |
+|---|---|
+| idle | `idle`, `listening`, `bored` |
+| music | `happy`, `excited`, `playful`, `celebrate`, `laughing` |
+| attention | `surprised`, `scared`, `curious`, `angry` |
+
+If none exist, the avatar's first animation is used. Perch draws a flat 2D version of the face (the Studio draws a lit 3D
+shape), so it will look close to, not identical to, the Studio preview. Reduced-motion settings in Windows show a still face.
+
+This is a **file format reader only**. The checks (`src/avatar/bibleStrong/schema.ts`) and the player are Perch's own
+code; no code from the Studio or its `@bible-strong/*` packages is used, which is what keeps Perch's licence a free choice.
+
 ## Security model
 
 User files are data, never code. Several layers keep it that way:
