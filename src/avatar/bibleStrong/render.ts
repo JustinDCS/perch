@@ -122,6 +122,11 @@ export function createBibleStrongView(avatar: BsAvatar): AvatarView {
   let frame = 0;
   let destroyed = false;
   let lastKey = "";
+  // when the state changes, glide from the old look to the new one instead of snapping
+  const BLEND_MS = 500;
+  let shown: Pose | undefined;
+  let blendFrom: Pose | undefined;
+  let blendStart = 0;
 
   const nextBlink = (now: number, first: boolean) => {
     const b = animation?.blink;
@@ -161,6 +166,13 @@ export function createBibleStrongView(avatar: BsAvatar): AvatarView {
       const first = animation ? expressionOf(animation.steps[0]!.expression) : expressionOf("neutral");
       pose = mixPose(poseOf(first), poseOf(first), 0, base);
     }
+
+    if (blendFrom && !reduceMotion) {
+      const t = (now - blendStart) / BLEND_MS;
+      if (t >= 1) blendFrom = undefined;
+      else pose = mixPose(blendFrom, pose, ease("smooth", t), base);
+    }
+    shown = pose;
 
     // blinking: close and reopen the eyes over `durationMs`
     let closed = 1;
@@ -232,6 +244,10 @@ export function createBibleStrongView(avatar: BsAvatar): AvatarView {
     const picked = pickAnimation(avatar.animations, avatar.animationOrder, name);
     animation = picked ? avatar.animations[picked] : undefined;
     startedAt = performance.now();
+    if (shown && !reduceMotion) {
+      blendFrom = shown;
+      blendStart = startedAt;
+    }
     lastKey = "";
     nextBlink(startedAt, true);
     svg.dataset.state = name;

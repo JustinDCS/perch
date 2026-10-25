@@ -48,8 +48,8 @@ export const DEFAULT_AVATAR_DEFINITION = {
     neutral: expression({ left: eye(25, 62, -9), spacing: 58 }),
     "glance-left": expression({ left: eye(25, 62, -9), spacing: 58, head: { x: 3, y: -16, z: 0 } }),
     "glance-right": expression({ left: eye(25, 62, -9), spacing: 58, head: { x: 3, y: 16, z: 0 } }),
-    joyful: expression({ left: eye(31, 88, -12, 8), right: eye(31, 88, -12, -8), spacing: 74, head: { x: 6, y: 0, z: -4 }, colors: MINT }),
-    "joyful-bob": expression({ left: eye(31, 88, -12, 8), right: eye(31, 88, -12, -8), spacing: 74, head: { x: -2, y: 8, z: 5 }, colors: MINT }),
+    joyful: expression({ left: eye(31, 86, -12), spacing: 72, head: { x: 8, y: -10, z: -6 }, colors: MINT }),
+    "joyful-bob": expression({ left: eye(33, 64, -4, -10), right: eye(33, 64, -4, 10), spacing: 78, head: { x: -4, y: 10, z: 6 }, colors: MINT, motion: { eyes: "none", body: "slowDrift" } }),
     surprised: expression({ left: eye(53, 53, -4), spacing: 76, head: { x: 5, y: 0, z: 0 }, colors: CORAL, motion: { eyes: "microSaccades", body: "none" } }),
     "surprised-wide": expression({ left: eye(60, 60, -4), spacing: 82, head: { x: 8, y: 0, z: 0 }, colors: CORAL, motion: { eyes: "microSaccades", body: "none" } }),
     sleeping: expression({ left: eye(53, 18, 0), spacing: 78, head: { x: -10, y: 0, z: 0 }, colors: SLATE }),
@@ -64,7 +64,7 @@ export const DEFAULT_AVATAR_DEFINITION = {
     },
     happy: {
       playbackMode: "loop",
-      steps: [step("joyful", 700, 350, "snappy"), step("joyful-bob", 700, 350, "snappy")],
+      steps: [step("joyful", 600, 450, "spring"), step("joyful-bob", 600, 450, "spring")],
       blink: { ...slowBlink, minIntervalMs: 2600, maxIntervalMs: 4600 },
     },
     surprised: {
