@@ -15,9 +15,9 @@ What is in this first slice:
 
 | Piece | State |
 |---|---|
-| Transparent, always-on-top overlay window with tray icon | written, **not yet run on Windows** |
-| **Now-playing pill** (Windows media session: Spotify, Apple Music, browsers…) with title, artist, artwork, previous / play-pause / next, progress and seek | written, **not yet run on Windows** |
-| **REST/JSON pill** driven by a manifest (poll an API, map fields, colour by thresholds, secrets from Credential Manager, host approval) | written; validation and UI tested, request path untested against a live API on Windows |
+| Transparent, always-on-top overlay window with tray icon | written, **verified on Windows 11** (overlay, tray build, window sizing) |
+| **Now-playing pill** (Windows media session: Spotify, Apple Music, browsers…) with title, artist, artwork, previous / play-pause / next, progress and seek | **verified on Windows 11 with Spotify** (metadata, artwork, play/pause, previous/next, progress) |
+| **REST/JSON pill** driven by a manifest (poll an API, map fields, colour by thresholds, secrets from Credential Manager, host approval) | **verified on Windows 11** with the public GitHub API (host approval, polling, stat layout); auth headers and secrets not yet tried live |
 | **Avatar** from an uploaded JSON file, reacting to idle / attention / music | working (tested in a browser) |
 | Settings: toggle pills, set secrets, review approved hosts, import avatars | working (tested in a browser) |
 
@@ -25,8 +25,7 @@ Verified so far, on Linux and in a headless browser: the safety rules in Rust (`
 all manifest / avatar / path validation (`npm test`), the type-check, the production build, and the UI
 flows (approval prompt, thresholds driving the avatar, avatar import) against a built-in mock.
 
-**Not yet verified:** compiling and running the Tauri shell and the Windows-only media code
-(`src-tauri/src/media.rs`) on a real Windows machine. Expect a few fixes on the first build.
+**Not yet verified:** seek dragging, Apple Music / browser sources, REST pills with a secret, the list layout, and the tray menu items.
 
 ## Run it
 
