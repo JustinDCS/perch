@@ -812,3 +812,7 @@ input[type="checkbox"] {
   overflow-wrap: anywhere;
   user-select: text;
 }
+
+.pill-setting .var-row { gap: 8px; }
+.pill-setting .var-row .row-main { flex: 0 0 38%; min-width: 0; }
+.pill-setting .var-row .input { flex: 1; min-width: 0; font-size: 12px; padding: 4px 8px; }

@@ -1,4 +1,5 @@
 import { isTemplate, isValidPath, isValidTemplate } from "../lib/jsonpath";
+import { VAR_KEY, fillUrl, stringsIn, varsIn } from "./variables";
 import {
   type Errs,
   type Result,
@@ -16,6 +17,7 @@ import type {
   AuthSpec,
   ListDisplay,
   PillManifest,
+  PillVariable,
   RestRequest,
   StatDisplay,
   Threshold,
@@ -138,7 +140,8 @@ function validateRequest(raw: unknown, errs: Errs): RestRequest | undefined {
 
   const url = str(raw.url, "request.url", errs, { max: 2000 });
   if (url) {
-    const checked = hostKeyOf(url);
+    // {var.x} blanks are filled in later; check the shape of the address with a stand-in
+    const checked = hostKeyOf(url.replace(/\{var\.[a-z][a-z0-9_]*\}/g, "var"));
     if ("error" in checked) {
       errs.push(`request.url: ${checked.error}`);
       return undefined;
@@ -164,6 +167,41 @@ function validateRequest(raw: unknown, errs: Errs): RestRequest | undefined {
   if (auth) request.auth = auth;
   if (body !== undefined) request.body = body;
   return request;
+}
+
+function validateVariables(raw: unknown, errs: Errs): PillVariable[] {
+  if (raw === undefined) return [];
+  if (!Array.isArray(raw) || raw.length > 8) {
+    errs.push("variables: must be a list of at most 8 variables");
+    return [];
+  }
+  const out: PillVariable[] = [];
+  const seen = new Set<string>();
+  raw.forEach((item, i) => {
+    const path = `variables[${i}]`;
+    if (!isRecord(item)) {
+      errs.push(`${path}: must be an object`);
+      return;
+    }
+    noUnknownKeys(item, ["key", "label", "placeholder", "default", "type", "group"], path, errs);
+    const keyHint = "use a lower-case name with letters, digits and '_'";
+    const key = str(item.key, `${path}.key`, errs, { max: 24, pattern: VAR_KEY, hint: keyHint });
+    const label = str(item.label, `${path}.label`, errs, { max: 40 });
+    const placeholder = has(item, "placeholder") ? str(item.placeholder, `${path}.placeholder`, errs, { max: 80 }) : undefined;
+    const def = has(item, "default") ? str(item.default, `${path}.default`, errs, { min: 0, max: 200 }) : undefined;
+    const type = has(item, "type") ? oneOf(item.type, `${path}.type`, errs, ["text", "host"] as const) : undefined;
+    const group = has(item, "group") ? str(item.group, `${path}.group`, errs, { max: 24, pattern: VAR_KEY, hint: keyHint }) : undefined;
+    if (key && seen.has(key)) errs.push(`${path}.key: "${key}" is used twice`);
+    if (!key || !label) return;
+    seen.add(key);
+    const variable: PillVariable = { key, label };
+    if (placeholder) variable.placeholder = placeholder;
+    if (def) variable.default = def;
+    if (type) variable.type = type;
+    if (group) variable.group = group;
+    out.push(variable);
+  });
+  return out;
 }
 
 function validateThresholds(raw: unknown, errs: Errs): Threshold[] {
@@ -268,7 +306,8 @@ export function validatePill(raw: unknown): Result<PillManifest> {
   }
 
   if (kind === "rest") {
-    noUnknownKeys(raw, ["perch", "id", "name", "kind", "icon", "accent", "refreshSeconds", "request", "display"], "", errs);
+    noUnknownKeys(raw, ["perch", "id", "name", "kind", "icon", "accent", "refreshSeconds", "variables", "request", "display"], "", errs);
+    const variables = validateVariables(raw.variables, errs);
     const refreshSeconds = has(raw, "refreshSeconds")
       ? num(raw.refreshSeconds, "refreshSeconds", errs, { min: 5, max: 86400, int: true })
       : 60;
@@ -277,7 +316,21 @@ export function validatePill(raw: unknown): Result<PillManifest> {
     if (errs.length > 0 || !id || !name || !request || !display || refreshSeconds === undefined) {
       return fail(...errs);
     }
+    const declared = new Set(variables.map((v) => v.key));
+    const uses: [string, string[]][] = [
+      ["request.url", varsIn(request.url)],
+      ["request.auth.user", request.auth?.type === "basic" ? varsIn(request.auth.user) : []],
+      ["request.body", stringsIn(request.body).flatMap(varsIn)],
+      ["display.link", display.layout === "list" && display.link ? varsIn(display.link) : []],
+    ];
+    for (const [where, keys] of uses) {
+      for (const key of keys) {
+        if (!declared.has(key)) errs.push(`${where}: uses {var.${key}} but "${key}" is not listed in variables`);
+      }
+    }
+    if (errs.length > 0) return fail(...errs);
     const pill: PillManifest = { perch: 1, id, name, kind, refreshSeconds, request, display };
+    if (variables.length > 0) pill.variables = variables;
     if (icon) pill.icon = icon;
     if (accent) pill.accent = accent;
     return ok(pill);
@@ -292,8 +345,14 @@ export function secretsOf(pill: PillManifest): string[] {
 }
 
 /** The host a pill will contact, or null for pills that do not use the network. */
-export function hostOf(pill: PillManifest): string | null {
+export function hostOf(pill: PillManifest, values: Record<string, string> = {}): string | null {
   if (pill.kind !== "rest") return null;
-  const checked = hostKeyOf(pill.request.url);
+  let url: string;
+  try {
+    url = fillUrl(pill.request.url, values, pill.variables);
+  } catch {
+    return null; // a variable is not set yet
+  }
+  const checked = hostKeyOf(url);
   return "host" in checked ? checked.host : null;
 }

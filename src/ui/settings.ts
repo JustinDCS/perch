@@ -2,6 +2,8 @@ import { avatarName, validateAnyAvatar } from "../avatar/any";
 import { type Config } from "../config";
 import { errorText, ipc } from "../ipc";
 import { secretsOf } from "../pills/manifest";
+import type { PillVariable, RestPill } from "../pills/types";
+import { storeKey, type Store } from "../pills/variables";
 import { SOUND_MODES, type SoundMode } from "../sound/sounds";
 import { GAZE_MODES, getDisabledPills, getHiddenChips, OPEN_DELAYS, type GazeMode } from "../settings";
 import { clear, h } from "./dom";
@@ -15,6 +17,10 @@ export interface SettingsContext {
   onPillToggle(id: string, enabled: boolean): void;
   /** Show or hide this pill as a chip in the small view. */
   onChipToggle(id: string, shown: boolean): void;
+  /** Everything the user has typed into pill variables, by storage key. */
+  variableValues(): Store;
+  /** Save a variable's value; returns the tidied text to show back. */
+  onVariableChange(pill: RestPill, variable: PillVariable, value: string): string;
   hideWhenQuiet: boolean;
   onHideWhenQuietChange(value: boolean): void;
   soundMode: SoundMode;
@@ -77,6 +83,32 @@ export function renderSettings(ctx: SettingsContext): HTMLElement {
   // ---- pills -----------------------------------------------------------------------------
   const disabled = getDisabledPills();
   const hiddenChips = getHiddenChips();
+  // inputs by storage key, so pills that share a value stay in step while the user types
+  const varInputs = new Map<string, HTMLInputElement[]>();
+  const variableFields = (pill: RestPill): HTMLElement[] =>
+    (pill.variables ?? []).map((variable) => {
+      const key = storeKey(pill.id, variable);
+      const input = h("input", {
+        class: "input",
+        type: "text",
+        placeholder: variable.placeholder ?? variable.default ?? "",
+        attrs: { "aria-label": `${pill.name}: ${variable.label}`, autocomplete: "off", spellcheck: "false" },
+      });
+      input.value = ctx.variableValues()[key] ?? "";
+      varInputs.set(key, [...(varInputs.get(key) ?? []), input]);
+      input.addEventListener("change", () => {
+        const clean = ctx.onVariableChange(pill, variable, input.value);
+        for (const other of varInputs.get(key) ?? []) other.value = clean;
+      });
+      return h(
+        "div",
+        { class: "row sub var-row" },
+        h("span", { class: "row-main", text: variable.label }),
+        variable.group ? h("span", { class: "row-meta", text: "shared" }) : null,
+        input,
+      );
+    });
+
   const pillRows = ctx.config.pills.map((pill) => {
     const box = h("input", { type: "checkbox", attrs: { "aria-label": `Show ${pill.name}` } });
     box.checked = !disabled.has(pill.id);
@@ -84,11 +116,13 @@ export function renderSettings(ctx: SettingsContext): HTMLElement {
     const chipBox = h("input", { type: "checkbox", attrs: { "aria-label": `Show ${pill.name} in the small view` } });
     chipBox.checked = !hiddenChips.has(pill.id);
     chipBox.addEventListener("change", () => ctx.onChipToggle(pill.id, chipBox.checked));
+    const fields = pill.kind === "rest" ? variableFields(pill) : [];
     return h(
       "div",
       { class: "pill-setting" },
       h("label", { class: "row" }, box, h("span", { class: "row-main", text: pill.name }), h("span", { class: "row-meta", text: pill.kind })),
       h("label", { class: "row sub" }, chipBox, h("span", { class: "row-main", text: "Show in the small view" })),
+      ...fields,
     );
   });
 

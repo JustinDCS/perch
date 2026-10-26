@@ -6,6 +6,7 @@ import { errorText, ipc } from "../ipc";
 import { clear, h } from "../ui/dom";
 import { hostOf } from "./manifest";
 import { toneFor } from "./tone";
+import { fillBody, fillText, fillUrl, missingVars } from "./variables";
 import type { ListDisplay, PillHost, PillView, RestPill, StatDisplay, Tone } from "./types";
 
 export function createRestPill(manifest: RestPill, host: PillHost): PillView {
@@ -20,14 +21,15 @@ export function createRestPill(manifest: RestPill, host: PillHost): PillView {
     title: "Show the last request and response",
     on: { click: () => (details.hidden = !details.hidden) },
   });
-  const target = (() => {
+  let target = manifest.request.url;
+  const showTarget = (url: string) => {
     try {
-      const u = new URL(manifest.request.url);
-      return `${u.origin}${u.pathname}`; // never the query string, which can carry a token
+      const u = new URL(url);
+      target = `${u.origin}${u.pathname}`; // never the query string, which can carry a token
     } catch {
-      return manifest.request.url;
+      target = url;
     }
-  })();
+  };
   function recordResult(outcome: string): void {
     const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
     details.textContent = `${manifest.request.method} ${target}\n${time}\n${outcome}`;
@@ -93,7 +95,7 @@ export function createRestPill(manifest: RestPill, host: PillHost): PillView {
         row.append(h("span", { class: "list-subtitle", text: textOf(item, display.subtitle) }));
       }
       if (display.link) {
-        const target = renderTemplate(display.link, item);
+        const target = renderTemplate(fillText(display.link, host.variables(manifest.id)), item);
         row.classList.add("link");
         row.setAttribute("role", "link");
         row.tabIndex = 0;
@@ -148,11 +150,27 @@ export function createRestPill(manifest: RestPill, host: PillHost): PillView {
     if (busy) return;
     busy = true;
     try {
+      const values = host.variables(manifest.id);
+      const unset = missingVars(manifest.variables, values);
+      if (unset.length > 0) {
+        recordResult(`needs setup: ${unset.map((v) => v.label).join(", ")}`);
+        clear(content);
+        showNotice(
+          `Needs setup: ${unset.map((v) => v.label).join(", ")}. `,
+          h("button", { class: "link-btn", text: "Set up", on: { click: () => host.openSettings() } }),
+        );
+        setTone("neutral");
+        host.reportChip(manifest.id, null);
+        return;
+      }
+      const url = fillUrl(manifest.request.url, values, manifest.variables);
+      showTarget(url);
+      const auth = manifest.request.auth;
       const data = await ipc.fetchJson({
-        url: manifest.request.url,
+        url,
         method: manifest.request.method,
-        auth: manifest.request.auth,
-        body: manifest.request.body,
+        auth: auth?.type === "basic" ? { ...auth, user: fillText(auth.user, values) } : auth,
+        body: fillBody(manifest.request.body, values),
       });
       notice.hidden = true;
       hasData = true;
@@ -160,14 +178,14 @@ export function createRestPill(manifest: RestPill, host: PillHost): PillView {
       if (manifest.display.layout === "stat") renderStat(manifest.display, data);
       else renderList(manifest.display, data);
     } catch (err) {
-      handleError(err);
+      handleError(err instanceof Error ? err.message : err);
     } finally {
       busy = false;
     }
   }
 
   // shown until the first response arrives
-  content.append(h("div", { class: "list-empty", text: `Loading from ${hostOf(manifest) ?? "…"}` }));
+  content.append(h("div", { class: "list-empty", text: `Loading from ${hostOf(manifest, host.variables(manifest.id)) ?? "…"}` }));
 
   return {
     id: manifest.id,

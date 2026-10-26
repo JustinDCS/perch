@@ -16,6 +16,7 @@ import type { SoundMode } from "../sound/sounds";
 import { loadConfig, resolveAvatar, type Config } from "../config";
 import { inTauri, ipc } from "../ipc";
 import { hostOf } from "../pills/manifest";
+import { resolveValues, storeKey, normalise } from "../pills/variables";
 import { createNowPlayingPill } from "../pills/nowPlaying";
 import { createRestPill } from "../pills/rest";
 import type { Chip, PillHost, PillManifest, PillView, Tone } from "../pills/types";
@@ -37,6 +38,8 @@ import {
   setOpenDelay,
   setPeeks,
   setPillEnabled,
+  setPillVar,
+  getPillVarStore,
   setPlacement,
   setSoundMode,
   setSoundVolume,
@@ -372,6 +375,13 @@ export async function mountApp(root: HTMLElement): Promise<void> {
 
   // ---- pills -------------------------------------------------------------------------------
   const pillHost: PillHost = {
+    variables(id) {
+      const pill = config.pills.find((p) => p.id === id);
+      return resolveValues(id, pill?.kind === "rest" ? pill.variables : undefined, getPillVarStore());
+    },
+    openSettings() {
+      showSettings();
+    },
     reportTone(id, tone) {
       const before = tones.get(id);
       tones.set(id, tone);
@@ -412,7 +422,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
       refresh();
     },
     async requestHostApproval(hostKey) {
-      const names = config.pills.filter((p) => hostOf(p) === hostKey).map((p) => p.name);
+      const names = config.pills.filter((p) => hostOf(p, pillHost.variables(p.id)) === hostKey).map((p) => p.name);
       modalOpen = true;
       refresh();
       const allowed = await confirmDialog(islandBody, {
@@ -485,6 +495,12 @@ export async function mountApp(root: HTMLElement): Promise<void> {
           renderAvatar();
         },
         onPillToggle: setPillEnabled,
+        variableValues: () => getPillVarStore(),
+        onVariableChange(pill, variable, value) {
+          const clean = normalise(variable, value);
+          setPillVar(storeKey(pill.id, variable), clean);
+          return clean;
+        },
         onChipToggle(id, shown) {
           setChipShown(id, shown);
           refresh();

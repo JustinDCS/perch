@@ -1,3 +1,4 @@
+import { parseStore, type Store } from "./pills/variables";
 import { SOUND_MODES, type SoundMode } from "./sound/sounds";
 import { parsePlacement, type Placement } from "./ui/placement";
 
@@ -229,5 +230,29 @@ export function setChipShown(id: string, shown: boolean): void {
     localStorage.setItem(HIDDEN_CHIPS_KEY, JSON.stringify([...hidden]));
   } catch {
     // ignore
+  }
+}
+
+// ---- pill variables (the blanks a pill leaves for the user) --------------------------------------
+
+const PILL_VARS_KEY = "perch.pillVars";
+
+export function getPillVarStore(): Store {
+  try {
+    const raw = localStorage.getItem(PILL_VARS_KEY);
+    return raw ? parseStore(JSON.parse(raw)) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function setPillVar(key: string, value: string): void {
+  const store = getPillVarStore();
+  if (value) store[key] = value;
+  else delete store[key];
+  try {
+    localStorage.setItem(PILL_VARS_KEY, JSON.stringify(store));
+  } catch {
+    // ignore: the value just will not persist
   }
 }

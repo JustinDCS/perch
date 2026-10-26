@@ -12,6 +12,18 @@ export interface Threshold {
   tone: Tone;
 }
 
+/** A blank the user fills in (Settings → Pills), used as {var.key} in the request. */
+export interface PillVariable {
+  key: string;
+  label: string;
+  placeholder?: string;
+  default?: string;
+  /** "host" accepts a pasted web address and keeps just the host name */
+  type?: "text" | "host";
+  /** pills with the same group share one value (two Jira pills, one site name) */
+  group?: string;
+}
+
 export interface RestRequest {
   url: string;
   method: "GET" | "POST";
@@ -46,6 +58,7 @@ export interface RestPill {
   /** #rrggbb colour for this pill's chip and card */
   accent?: string;
   refreshSeconds: number;
+  variables?: PillVariable[];
   request: RestRequest;
   display: StatDisplay | ListDisplay;
 }
@@ -75,6 +88,10 @@ export interface PillHost {
   reportSources(playing: number): void;
   /** Set (or with null, clear) the chip shown for this pill in the small island. */
   reportChip(id: string, chip: Chip | null): void;
+  /** The user's values for this pill's variables (defaults filled in; "" when unset). */
+  variables(id: string): Record<string, string>;
+  /** Open the Library so the user can fill in a pill's variables. */
+  openSettings(): void;
   /** Ask the user to allow a host; resolves true if they agreed and it was saved. */
   requestHostApproval(host: string): Promise<boolean>;
 }

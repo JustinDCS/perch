@@ -129,6 +129,7 @@ Small synthesised blips (no audio files): a two-chirp "hey" when a pill turns re
 * `display.layout: "stat"`: `value` (path), optional `label`, `unit`, and `thresholds`. The first matching rule wins; each rule has
   `gte` / `lte` / `equals` and a `tone` of `neutral`, `good`, `warn` or `danger`.
 * `display.layout: "list"`: `items` (path to an array), `title` and optional `subtitle`, `limit` (1 to 20). `title` and `subtitle` are either a path inside each item (`fields.summary`) or a template with holes (`{key} {fields.summary}`). An optional `link` is a web address template (`https://your-site.atlassian.net/browse/{key}`, or `{html_url}` to use a link from the response); clicking the row opens it in your browser, but only if its host is one you have approved.
+* `variables` (optional, up to 8): blanks the user fills in under **Library → Pills**, used as `{var.name}` in `request.url`, the `basic` auth `user`, string values in `body`, and `display.link`. Each has a `key` (lower case), a `label`, and optionally `placeholder`, `default`, `type` and `group`. `type: "host"` accepts a pasted web address and keeps just the host name. Pills with the same `group` share one value, so two Jira pills ask for the site once. Until every blank without a default is filled, the pill shows "Needs setup". In a URL, a variable in the host part must look like a host name (so it cannot redirect the request), and anywhere else it is URL-encoded for you. The scheme (`https://`) must be typed in the manifest. Values are stored on the user's machine and are not secrets: tokens still go in **Secrets**.
 * Paths use names, dots and `[0]` indexes, e.g. `fields.summary` or `issues[0].key`. `.length` works on arrays.
 
 A pill whose tone is `danger` makes the avatar switch to its **attention** state.
@@ -139,8 +140,9 @@ Two examples are in `examples/pips/`: `jira-open-tickets.json` (a count that tur
 
 1. Create an API token at <https://id.atlassian.com/manage-profile/security/api-tokens>.
 2. In Perch: Library → Secrets, add a secret named `jira-token` and paste the token. It goes to Windows Credential Manager and is never shown again.
-3. Copy the example into your config folder (Library → Open config folder → `pips`), then change `your-site` to your Jira site name and `you@example.com` to the email you sign in with. Edit the JQL to taste.
-4. Library → Reload. The pill asks to contact your site: choose Allow. The row links use the same host, so they work after that.
+3. Copy the examples into your config folder (Library → Open config folder → `pips`) and press Reload.
+4. In Library → Pills, fill in your **Jira site**, **Atlassian email** and, if you like, the project key or the JQL. The two pills share the site and email. No file editing needed.
+5. The pill asks to contact your site: choose Allow. The row links use the same host, so they work after that.
 
 If a REST pill shows a value you did not expect, open the island and press **details** on that pill: it shows the address it asked (without the query string), the time, and the start of the response or the error, so you can see what the API really returned.
 
