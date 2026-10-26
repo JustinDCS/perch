@@ -142,6 +142,8 @@ Two examples are in `examples/pips/`: `jira-open-tickets.json` (a count that tur
 3. Copy the example into your config folder (Library → Open config folder → `pips`), then change `your-site` to your Jira site name and `you@example.com` to the email you sign in with. Edit the JQL to taste.
 4. Library → Reload. The pill asks to contact your site: choose Allow. The row links use the same host, so they work after that.
 
+If a REST pill shows a value you did not expect, open the island and press **details** on that pill: it shows the address it asked (without the query string), the time, and the start of the response or the error, so you can see what the API really returned.
+
 ## Avatar format
 
 An avatar is a body shape, eyes and a mouth, plus how they look in each state. See

@@ -98,6 +98,17 @@ export function textOf(data: unknown, spec: string): string {
   return isTemplate(spec) ? renderTemplate(spec, data) : formatValue(getPath(data, spec));
 }
 
+/** A short, single-line look at a response, for the pill's details view. */
+export function previewJson(value: unknown, max = 300): string {
+  let text: string;
+  try {
+    text = JSON.stringify(value) ?? String(value);
+  } catch {
+    return "(could not show the response)";
+  }
+  return text.length > max ? `${text.slice(0, max)}… (${text.length} characters)` : text;
+}
+
 export function toNumber(value: unknown): number | undefined {
   if (typeof value === "number" && Number.isFinite(value)) return value;
   if (typeof value === "string" && value.trim() !== "") {

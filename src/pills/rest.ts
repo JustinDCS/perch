@@ -1,7 +1,7 @@
 // REST/JSON pill. The manifest says where to fetch, how to authenticate (by secret *name*),
 // and which fields of the response to show. The request itself is made by Rust.
 
-import { formatValue, getPath, renderTemplate, textOf } from "../lib/jsonpath";
+import { formatValue, getPath, previewJson, renderTemplate, textOf } from "../lib/jsonpath";
 import { errorText, ipc } from "../ipc";
 import { clear, h } from "../ui/dom";
 import { hostOf } from "./manifest";
@@ -12,6 +12,27 @@ export function createRestPill(manifest: RestPill, host: PillHost): PillView {
   const content = h("div", { class: "pill-content" });
   const notice = h("div", { class: "pill-notice", hidden: true });
 
+  // "Details": what was asked, and what came back last time, to see why a value looks wrong
+  const details = h("pre", { class: "pill-details", hidden: true });
+  const infoBtn = h("button", {
+    class: "pill-info",
+    text: "details",
+    title: "Show the last request and response",
+    on: { click: () => (details.hidden = !details.hidden) },
+  });
+  const target = (() => {
+    try {
+      const u = new URL(manifest.request.url);
+      return `${u.origin}${u.pathname}`; // never the query string, which can carry a token
+    } catch {
+      return manifest.request.url;
+    }
+  })();
+  function recordResult(outcome: string): void {
+    const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    details.textContent = `${manifest.request.method} ${target}\n${time}\n${outcome}`;
+  }
+
   const root = h(
     "section",
     { class: "pill pill-rest", data: { kind: "rest", tone: "neutral" } },
@@ -20,10 +41,13 @@ export function createRestPill(manifest: RestPill, host: PillHost): PillView {
       { class: "pill-head" },
       manifest.icon ? h("span", { class: "pill-icon", text: manifest.icon }) : null,
       h("span", { class: "pill-name", text: manifest.name }),
+      infoBtn,
     ),
     content,
     notice,
+    details,
   );
+  recordResult("waiting for the first response…");
 
   if (manifest.accent) root.style.setProperty("--pill-accent", manifest.accent);
 
@@ -92,6 +116,7 @@ export function createRestPill(manifest: RestPill, host: PillHost): PillView {
 
   function handleError(err: unknown): void {
     const message = errorText(err);
+    recordResult(`failed: ${message}`);
     // keep showing the last good value if there is one; otherwise drop the "Loading…" text
     if (!hasData) clear(content);
 
@@ -131,6 +156,7 @@ export function createRestPill(manifest: RestPill, host: PillHost): PillView {
       });
       notice.hidden = true;
       hasData = true;
+      recordResult(`OK: ${previewJson(data)}`);
       if (manifest.display.layout === "stat") renderStat(manifest.display, data);
       else renderList(manifest.display, data);
     } catch (err) {

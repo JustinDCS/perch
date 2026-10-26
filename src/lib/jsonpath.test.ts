@@ -92,3 +92,23 @@ describe("templates", () => {
     expect(renderTemplate("{toString}", issue)).toBe("—");
   });
 });
+
+import { previewJson } from "./jsonpath";
+
+describe("previewJson", () => {
+  it("shows small responses whole", () => {
+    expect(previewJson({ count: 0 })).toBe('{"count":0}');
+  });
+  it("cuts long ones and says how long they were", () => {
+    const text = previewJson({ list: "x".repeat(1000) }, 50);
+    expect(text.startsWith('{"list":"xxxx')).toBe(true);
+    expect(text).toContain("characters)");
+    expect(text.length).toBeLessThan(120);
+  });
+  it("copes with values JSON cannot show", () => {
+    expect(previewJson(undefined)).toBe("undefined");
+    const circular: Record<string, unknown> = {};
+    circular.self = circular;
+    expect(previewJson(circular)).toBe("(could not show the response)");
+  });
+});
