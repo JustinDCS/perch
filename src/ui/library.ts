@@ -1,6 +1,6 @@
 // Adding pills to the Library: from a file the user picks, or from the examples that ship with Perch.
 
-import { errorText, ipc } from "../ipc";
+import { errorText, ipc, type InboxStatus } from "../ipc";
 import { validatePill } from "../pills/manifest";
 import type { PillManifest } from "../pills/types";
 import { clear, h } from "./dom";
@@ -130,4 +130,57 @@ export function pillAdder(installedIds: Set<string>, onAdded: () => Promise<void
     fileInput,
   );
   return { buttons, panel: h("div", {}, messages, examplesBody) };
+}
+
+/** The local inbox: a switch, the address and key for programs, and an example command. */
+export function inboxSection(): HTMLElement[] {
+  const body = h("div", { class: "inbox-settings" });
+  let shown = false;
+
+  const paint = (status: InboxStatus): void => {
+    clear(body);
+    const toggle = h("input", { type: "checkbox", class: "switch", attrs: { "aria-label": "Let programs on this PC ask me questions" } });
+    toggle.checked = status.enabled;
+    toggle.addEventListener("change", () => {
+      toggle.disabled = true;
+      void ipc.inboxSetEnabled(toggle.checked).then(paint).catch((err) => {
+        toggle.checked = false;
+        body.append(errorList([errorText(err)]));
+      });
+    });
+    body.append(h("label", { class: "row" }, h("span", { class: "row-main wrap", text: "Let programs on this PC ask me questions" }), toggle));
+    if (!status.enabled || status.port === null) {
+      body.append(
+        h("p", { class: "muted", text: "Off. When on, Perch listens only on this computer (127.0.0.1) and only answers programs that know your key. Nothing is ever answered for you." }),
+      );
+      return;
+    }
+    const keyText = shown ? status.key : `${status.key.slice(0, 4)}${"•".repeat(20)}`;
+    const command = (key: string): string =>
+      `curl.exe -X POST http://127.0.0.1:${status.port}/ask -H "X-Perch-Key: ${key}" -d "{\\"title\\":\\"Run it?\\",\\"buttons\\":[\\"Allow\\",\\"Deny\\"]}"`;
+    body.append(
+      h("div", { class: "row" }, h("span", { class: "row-main", text: `Address: 127.0.0.1:${status.port}` })),
+      h("div", { class: "row" }, h("span", { class: "row-main", text: `Key: ${keyText}` }), h("button", { class: "btn", text: shown ? "Hide" : "Show", on: { click: () => { shown = !shown; paint(status); } } })),
+      h("pre", { class: "inbox-code", text: command(shown ? status.key : "<your key>") }),
+      h(
+        "div",
+        { class: "row" },
+        h("button", {
+          class: "btn",
+          text: "Copy this command",
+          on: { click: () => void navigator.clipboard?.writeText(command(status.key)).catch(() => undefined) },
+        }),
+        h("button", {
+          class: "btn",
+          text: "New key",
+          title: "Programs using the old key stop working",
+          on: { click: () => void ipc.inboxRegenerateKey().then(paint).catch(() => undefined) },
+        }),
+      ),
+      h("p", { class: "muted", text: "Anyone who has this key and is signed in to this PC can ask you questions, so keep it to yourself. The first button is highlighted." }),
+    );
+  };
+
+  void ipc.inboxStatus().then(paint).catch(() => body.append(h("p", { class: "muted", text: "The inbox is not available in this build." })));
+  return [body];
 }

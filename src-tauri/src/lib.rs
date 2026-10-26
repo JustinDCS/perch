@@ -1,4 +1,5 @@
 mod files;
+mod inbox;
 mod media;
 mod net;
 mod secrets;
@@ -52,6 +53,7 @@ pub fn run() {
             }
             app.manage(AppState::new(config_dir)?);
 
+            inbox::autostart(app.handle());
             place_at_top_centre(app.handle());
 
             let toggle = MenuItem::with_id(app, "toggle", "Show / hide Perch", true, None::<&str>)?;
@@ -94,6 +96,10 @@ pub fn run() {
             media::media_get_state,
             media::media_get_thumbnail,
             media::media_control,
+            inbox::inbox_status,
+            inbox::inbox_set_enabled,
+            inbox::inbox_regenerate_key,
+            inbox::inbox_answer,
             net::fetch_json,
             net::open_url,
             net::approved_hosts,

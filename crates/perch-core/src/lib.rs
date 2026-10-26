@@ -4,6 +4,8 @@
 //! unit-tested on any machine. The Tauri app (`src-tauri`) calls into it before
 //! it touches the network, the keychain or the file system.
 
+pub mod inbox;
+
 use std::collections::BTreeSet;
 use std::fs;
 use std::net::{Ipv4Addr, Ipv6Addr};

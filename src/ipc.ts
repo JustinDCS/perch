@@ -2,6 +2,7 @@
 // (`npm run dev` without Tauri) a small mock is used so the UI can still be developed.
 
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import type { AuthSpec } from "./pills/types";
 
 export interface MediaState {
@@ -37,6 +38,26 @@ export interface UserFile {
   content: string;
 }
 
+export interface InboxStatus {
+  enabled: boolean;
+  port: number | null;
+  key: string;
+}
+
+/** A question from a program on this PC (see the README, "Local inbox"). */
+export interface InboxAsk {
+  id: number;
+  title: string;
+  detail: string | null;
+  buttons: string[];
+  source: string | null;
+}
+
+export interface InboxHandlers {
+  ask(ask: InboxAsk): void;
+  cancel(id: number): void;
+}
+
 export interface Ipc {
   /** `source` is an app id to look at instead of the one Windows considers current. */
   mediaState(source?: string): Promise<MediaState>;
@@ -54,6 +75,13 @@ export interface Ipc {
   openConfigDir(): Promise<void>;
   /** Open a web address in the default browser. Only for hosts the user has approved. */
   openUrl(url: string): Promise<void>;
+  inboxStatus(): Promise<InboxStatus>;
+  inboxSetEnabled(enabled: boolean): Promise<InboxStatus>;
+  inboxRegenerateKey(): Promise<InboxStatus>;
+  /** The button label the user pressed, or null if they dismissed the question. */
+  inboxAnswer(id: number, answer: string | null): Promise<void>;
+  /** Start hearing questions; returns a function that stops. */
+  onInbox(handlers: InboxHandlers): () => void;
 }
 
 export const inTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -73,6 +101,17 @@ const real: Ipc = {
   saveUserFile: (kind, name, content) => invoke<string>("save_user_file", { kind, name, content }),
   openConfigDir: () => invoke("open_config_dir"),
   openUrl: (url) => invoke("open_url", { url }),
+  inboxStatus: () => invoke<InboxStatus>("inbox_status"),
+  inboxSetEnabled: (enabled) => invoke<InboxStatus>("inbox_set_enabled", { enabled }),
+  inboxRegenerateKey: () => invoke<InboxStatus>("inbox_regenerate_key"),
+  inboxAnswer: (id, answer) => invoke("inbox_answer", { id, answer }),
+  onInbox(handlers) {
+    const stops = [
+      listen<InboxAsk>("inbox-ask", (event) => handlers.ask(event.payload)),
+      listen<number>("inbox-cancel", (event) => handlers.cancel(event.payload)),
+    ];
+    return () => stops.forEach((stop) => void stop.then((fn) => fn()));
+  },
 };
 
 // ---- browser mock (development only) -------------------------------------------------------
@@ -80,6 +119,7 @@ const real: Ipc = {
 function createMock(): Ipc {
   const approved = new Set<string>();
   const secrets = new Set<string>();
+  let inbox: InboxStatus = { enabled: false, port: null, key: "0123456789abcdef0123456789abcdef0123456789abcdef" };
   let pending = [
     { id: "dep-41", title: "Deploy tincakes-site to production?", summary: "main · 3 commits since v1.4 · tests passed" },
     { id: "inv-2041", title: "Approve invoice INV-2041?", summary: "Example client · R 12 480.00 · due 31 Oct" },
@@ -261,6 +301,31 @@ function createMock(): Ipc {
       const host = new URL(url).host;
       if (!approved.has(host)) throw `HOST_NOT_APPROVED:${host}`;
       (window as unknown as { __lastOpened?: string }).__lastOpened = url;
+    },
+    async inboxStatus() {
+      return { ...inbox };
+    },
+    async inboxSetEnabled(enabled) {
+      inbox = { ...inbox, enabled, port: enabled ? 47600 : null };
+      return { ...inbox };
+    },
+    async inboxRegenerateKey() {
+      inbox = { ...inbox, key: Math.random().toString(16).slice(2).padEnd(48, "0") };
+      return { ...inbox };
+    },
+    async inboxAnswer(id, answer) {
+      const w = window as unknown as { __inboxAnswers?: [number, string | null][] };
+      (w.__inboxAnswers ??= []).push([id, answer]);
+    },
+    onInbox(handlers) {
+      // the browser mock: call window.__inboxAsk({ id, title, buttons, ... }) from the console
+      const w = window as unknown as { __inboxAsk?: (a: InboxAsk) => void; __inboxCancel?: (id: number) => void };
+      w.__inboxAsk = (ask) => handlers.ask(ask);
+      w.__inboxCancel = (id) => handlers.cancel(id);
+      return () => {
+        delete w.__inboxAsk;
+        delete w.__inboxCancel;
+      };
     },
   };
 }

@@ -97,6 +97,18 @@ Small synthesised blips (no audio files): a two-chirp "hey" when a pill turns re
 
 Open the Library with the sliders icon (or the tray menu). **Pills** has a switch per pill (and for whether it shows in the small view), the blanks a pill asks for, **+ Add from file** (a pill `.json` is checked, then copied into your config folder) and **Browse examples** (the Jira, GitHub and approval examples that ship inside Perch, one click each). **Avatar**, **Secrets and access**, **Behaviour** and **Sounds** follow.
 
+## Local inbox
+
+Off by default. Turn it on in **Library → Local inbox** and any program on this PC can ask you a question and wait for your answer, for example a build script ("Run npm publish?") or a tool that wants permission. Perch listens only on `127.0.0.1` (port 47600 or the next free one), never on the network.
+
+```
+curl.exe -X POST http://127.0.0.1:47600/ask -H "X-Perch-Key: <your key>" -d "{\"title\":\"Run it?\",\"detail\":\"tincakes-site 1.5.0\",\"buttons\":[\"Allow\",\"Deny\"]}"
+```
+
+The call waits and then returns `{"answer":"Allow"}`; `{"answer":null,"reason":"dismissed"}` if you dismissed it, or HTTP 408 with `"reason":"timeout"` if nobody answered. Fields: `title` (1 to 120 characters), `detail` (optional, up to 240), `buttons` (1 to 3 labels, the first is highlighted), `source` (optional label such as "build script"), `timeoutSeconds` (optional, 5 to 3600, default 300). The question shows as a card at the top of the island, counts in "N need you", and opens the island for a few seconds like any new request. If the program hangs up, the card disappears.
+
+Rules: the key (Library → Local inbox) must be sent as `X-Perch-Key`; requests with an `Origin` header (web pages) or a `Host` other than this PC are refused; at most 8 questions at once; nothing is ever answered for you. The rules and the server are in `crates/perch-core/src/inbox.rs`, tested over real sockets.
+
 ## Pill manifest
 
 ```json

@@ -7,7 +7,7 @@ import { storeKey, type Store } from "../pills/variables";
 import { SOUND_MODES, type SoundMode } from "../sound/sounds";
 import { GAZE_MODES, getDisabledPills, getHiddenChips, OPEN_DELAYS, type GazeMode } from "../settings";
 import { clear, h } from "./dom";
-import { pillAdder } from "./library";
+import { inboxSection, pillAdder } from "./library";
 
 const MAX_IMPORT_BYTES = 256 * 1024;
 
@@ -296,6 +296,7 @@ export function renderSettings(ctx: SettingsContext): HTMLElement {
       h("h4", { class: "settings-sub", text: "Approved hosts" }),
       hostsBody,
     ),
+    section("Local inbox", ...inboxSection()),
     section(
       "Behaviour",
       h("label", { class: "row" }, h("span", { class: "row-main wrap", text: "Open after resting the pointer" }), delaySelect),

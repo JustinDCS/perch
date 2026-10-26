@@ -9,6 +9,7 @@ import {
   type Monitor,
 } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
+import { createInbox } from "./inbox";
 import { createView } from "../avatar/any";
 import { nextPeekDelay } from "../avatar/life";
 import type { AvatarView } from "../avatar/renderer";
@@ -542,6 +543,12 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     },
   };
 
+  // questions from programs on this PC (the local inbox); they live as long as the app does
+  const inbox = createInbox({
+    onNeeds: (count) => pillHost.reportNeeds("inbox", count),
+    onArrival: () => pillHost.reportArrival("inbox"),
+  });
+
   function createPillView(manifest: PillManifest): PillView {
     return manifest.kind === "rest" ? createRestPill(manifest, pillHost) : createNowPlayingPill(manifest, pillHost);
   }
@@ -571,6 +578,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     }
     pillViews = active.map(createPillView);
     for (const pill of pillViews) body.append(pill.el);
+    inbox.attach(body);
     for (const pill of pillViews) pill.start();
     refresh();
   }
