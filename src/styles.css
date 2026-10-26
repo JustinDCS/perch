@@ -131,7 +131,11 @@ input[type="checkbox"] {
   border-radius: 50%;
   background: var(--ink);
   line-height: 0;
-  cursor: pointer;
+  cursor: grab;
+  touch-action: none;
+}
+.island[data-dragging="on"] .perch {
+  cursor: grabbing;
 }
 .perch:focus-visible {
   outline: 2px solid var(--accent);
@@ -625,5 +629,67 @@ input[type="checkbox"] {
 @media (prefers-reduced-motion: reduce) {
   .avatar .character {
     animation: none !important;
+  }
+}
+
+/* resting the pointer on the island: a ring beside the pointer and a line along the lip fill up */
+.dwell-ring {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 6;
+  width: 22px;
+  height: 22px;
+  pointer-events: none;
+}
+.dwell-ring svg {
+  display: block;
+  transform: rotate(-90deg);
+}
+.dwell-ring .track {
+  fill: var(--ink);
+  stroke: rgba(255, 255, 255, 0.18);
+  stroke-width: 3;
+}
+.dwell-ring .fill {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 1 1;
+  stroke-dashoffset: 1;
+}
+.island[data-dwell="on"] .dwell-ring .fill {
+  animation: dwell-fill var(--dwell, 900ms) linear forwards;
+}
+.island-body::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: left;
+  pointer-events: none;
+}
+.island[data-dwell="on"] .island-body::after {
+  animation: dwell-line var(--dwell, 900ms) linear forwards;
+}
+@keyframes dwell-fill {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes dwell-line {
+  to {
+    transform: scaleX(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .island[data-dwell="on"] .dwell-ring .fill,
+  .island[data-dwell="on"] .island-body::after {
+    animation-timing-function: steps(10, end);
   }
 }

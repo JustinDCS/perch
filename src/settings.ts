@@ -1,3 +1,5 @@
+import { parsePlacement, type Placement } from "./ui/placement";
+
 // Per-user UI preferences kept in localStorage. Everything is wrapped in try/catch because
 // storage can be unavailable or cleared; the app must work with defaults in that case.
 
@@ -57,6 +59,58 @@ export function getHideWhenQuiet(): boolean {
 export function setHideWhenQuiet(value: boolean): void {
   try {
     localStorage.setItem(HIDE_QUIET_KEY, value ? "1" : "0");
+  } catch {
+    // ignore
+  }
+}
+
+// ---- where the island sits -----------------------------------------------------------------
+
+
+const PLACEMENT_KEY = "perch.placement";
+
+export function getPlacement(): Placement | null {
+  try {
+    const raw = localStorage.getItem(PLACEMENT_KEY);
+    return raw ? parsePlacement(JSON.parse(raw)) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Save where the island sits, or with null forget it (back to centre of the current screen). */
+export function setPlacement(placement: Placement | null): void {
+  try {
+    if (placement) localStorage.setItem(PLACEMENT_KEY, JSON.stringify(placement));
+    else localStorage.removeItem(PLACEMENT_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+// ---- how long the pointer must rest on the island before it opens -----------------------------
+
+const OPEN_DELAY_KEY = "perch.openDelayMs";
+export const OPEN_DELAYS = [
+  { ms: 0, label: "Instantly" },
+  { ms: 500, label: "Half a second" },
+  { ms: 900, label: "One second" },
+  { ms: 1500, label: "Two seconds" },
+] as const;
+export const DEFAULT_OPEN_DELAY_MS = 900;
+
+export function getOpenDelay(): number {
+  try {
+    const value = Number(localStorage.getItem(OPEN_DELAY_KEY));
+    return localStorage.getItem(OPEN_DELAY_KEY) !== null && OPEN_DELAYS.some((d) => d.ms === value) ? value : DEFAULT_OPEN_DELAY_MS;
+  } catch {
+    return DEFAULT_OPEN_DELAY_MS;
+  }
+}
+
+export function setOpenDelay(ms: number): void {
+  try {
+    localStorage.setItem(OPEN_DELAY_KEY, String(ms));
   } catch {
     // ignore
   }

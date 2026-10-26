@@ -71,7 +71,8 @@ Perch hangs from the top edge of your screen like a notch, with the avatar perch
 
 * **Hidden**: when nothing is happening it shrinks to a sliver with two eyes peeking out (switch this off in the Library).
 * **Small**: while music plays or a pill needs attention it shows one chip per pill (♪ track, ★ value, count).
-* **Home**: move the pointer onto it (or click the avatar to keep it open) to see the full cards. A pill that turns red opens it by itself, and it stays open until you have been over it and left.
+* **Home**: rest the pointer on it for about a second (a ring fills beside the pointer; Library → Behaviour changes the wait) or click the avatar to keep it open. Brushing past it does nothing, so it will not cover things at the top of your screen. A pill that turns red opens it by itself, and it stays open until you have been over it and left.
+* **Moving it**: drag the avatar. The island slides along the top edge of whichever screen the pointer is on, and remembers where you dropped it. Library → Behaviour → *Centre on this screen* resets it.
 * A line along the lip takes the worst tone: green, amber or coral.
 
 Each pill file may set an `"accent": "#rrggbb"` colour for its chip and card.

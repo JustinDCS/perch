@@ -2,7 +2,7 @@ import { avatarName, validateAnyAvatar } from "../avatar/any";
 import { type Config } from "../config";
 import { errorText, ipc } from "../ipc";
 import { secretsOf } from "../pills/manifest";
-import { getDisabledPills } from "../settings";
+import { getDisabledPills, OPEN_DELAYS } from "../settings";
 import { clear, h } from "./dom";
 
 const MAX_IMPORT_BYTES = 256 * 1024;
@@ -14,6 +14,10 @@ export interface SettingsContext {
   onPillToggle(id: string, enabled: boolean): void;
   hideWhenQuiet: boolean;
   onHideWhenQuietChange(value: boolean): void;
+  openDelayMs: number;
+  onOpenDelayChange(ms: number): void;
+  /** Forget where the island was dragged to and centre it on the current screen. */
+  onResetPosition(): void;
   /** Re-read the config folder and rebuild everything. */
   onReload(): Promise<void>;
   /** A secret or approval changed: pills should refresh. */
@@ -35,6 +39,11 @@ export function renderSettings(ctx: SettingsContext): HTMLElement {
   const quietBox = h("input", { type: "checkbox", attrs: { "aria-label": "Hide when nothing is happening" } });
   quietBox.checked = ctx.hideWhenQuiet;
   quietBox.addEventListener("change", () => ctx.onHideWhenQuietChange(quietBox.checked));
+
+  const delaySelect = h("select", { class: "input", attrs: { "aria-label": "Open after resting the pointer" } });
+  for (const d of OPEN_DELAYS) delaySelect.append(h("option", { text: d.label, value: String(d.ms) }));
+  delaySelect.value = String(ctx.openDelayMs);
+  delaySelect.addEventListener("change", () => ctx.onOpenDelayChange(Number(delaySelect.value)));
 
   // ---- pills -----------------------------------------------------------------------------
   const disabled = getDisabledPills();
@@ -201,7 +210,10 @@ export function renderSettings(ctx: SettingsContext): HTMLElement {
     section(
       "Behaviour",
       h("label", { class: "row" }, quietBox, h("span", { class: "row-main", text: "Shrink to a sliver when nothing is happening" })),
-      h("p", { class: "muted", text: "Move the pointer to the top edge to bring it back. Music and alerts always show." }),
+      h("p", { class: "muted", text: "Rest the pointer on it to bring it back. Music and alerts always show." }),
+      h("label", { class: "row" }, h("span", { class: "row-main", text: "Open after resting the pointer" }), delaySelect),
+      h("p", { class: "muted", text: "Drag the avatar to move Perch along the top of any screen." }),
+      h("div", { class: "row" }, h("button", { class: "btn", text: "Centre on this screen", on: { click: () => ctx.onResetPosition() } })),
     ),
     section("Pills", ...pillRows),
     section("Secrets", h("p", { class: "muted", text: "Stored in Windows Credential Manager. Perch never shows them again." }), secretsBody),

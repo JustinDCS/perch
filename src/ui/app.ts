@@ -1,4 +1,13 @@
-import { currentMonitor, getCurrentWindow, LogicalPosition, LogicalSize } from "@tauri-apps/api/window";
+import {
+  availableMonitors,
+  currentMonitor,
+  cursorPosition,
+  getCurrentWindow,
+  LogicalSize,
+  PhysicalPosition,
+  primaryMonitor,
+  type Monitor,
+} from "@tauri-apps/api/window";
 import { createView } from "../avatar/any";
 import type { AvatarView } from "../avatar/renderer";
 import { loadConfig, resolveAvatar, type Config } from "../config";
@@ -11,18 +20,25 @@ import {
   getAvatarFile,
   getDisabledPills,
   getHideWhenQuiet,
+  getOpenDelay,
+  getPlacement,
   setAvatarFile,
   setHideWhenQuiet,
+  setOpenDelay,
   setPillEnabled,
+  setPlacement,
 } from "../settings";
 import { clear, h } from "./dom";
 import { icon } from "./icons";
 import { confirmDialog } from "./modal";
+import { fracForCentre, monitorAt, monitorKey, resolvePlacement, windowOrigin, type MonitorBox } from "./placement";
 import { renderSettings } from "./settings";
 
 type Mode = "hidden" | "small" | "home";
 
 const LEAVE_DELAY_MS = 600;
+/** how far the pointer must travel on the avatar before it counts as a drag, not a click */
+const DRAG_THRESHOLD_PX = 6;
 const SLEEP_AFTER_MS = 10 * 60 * 1000;
 const TONE_RANK: Record<Tone, number> = { neutral: 0, good: 1, warn: 2, danger: 3 };
 
@@ -42,10 +58,12 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   let alertOpen = false;
   let modalOpen = false;
   let leaveTimer: ReturnType<typeof setTimeout> | undefined;
+  let openDelay = getOpenDelay();
+  let dragging = false;
 
   // ---- layout ------------------------------------------------------------------------------
   const avatarSlot = h("div", { class: "avatar-slot" });
-  const perch = h("button", { class: "perch", title: "Keep open", aria: { label: "Keep open", pressed: "false" } }, avatarSlot);
+  const perch = h("button", { class: "perch", title: "Click to keep open, drag to move", aria: { label: "Keep open", pressed: "false" } }, avatarSlot);
   const label = h("div", { class: "island-label" });
   const settingsBtn = h("button", { class: "icon-btn", title: "Library", aria: { label: "Library" } });
   const collapseBtn = h("button", { class: "icon-btn", title: "Collapse", aria: { label: "Collapse" } }, icon("up", 18));
@@ -61,13 +79,34 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     islandBody,
     perch,
   );
+  // shows how long is left before the island opens; it follows the pointer
+  const ring = h("div", { class: "dwell-ring", hidden: true, aria: { hidden: "true" } });
+  ring.innerHTML =
+    '<svg viewBox="0 0 24 24" width="22" height="22"><circle class="track" cx="12" cy="12" r="9"/><circle class="fill" cx="12" cy="12" r="9" pathLength="1"/></svg>';
+  island.append(ring);
   root.append(island);
 
-  // ---- window sizing: the window always hugs the island, centred on the top edge -------------
+  // ---- window sizing and placement: the window hugs the island, flush with a monitor's top ------
   let lastSize = "";
   let fitting = false;
+
+  function toBox(m: Monitor): MonitorBox {
+    return {
+      x: m.workArea.position.x,
+      y: m.workArea.position.y,
+      width: m.workArea.size.width,
+      height: m.workArea.size.height,
+      scale: m.scaleFactor,
+      key: monitorKey(m.position.x, m.position.y),
+    };
+  }
+
+  async function monitorBoxes(): Promise<MonitorBox[]> {
+    return (await availableMonitors()).map(toBox);
+  }
+
   async function fitWindow(): Promise<void> {
-    if (!inTauri || fitting) return;
+    if (!inTauri || fitting || dragging) return;
     const width = Math.ceil(island.offsetWidth);
     const height = Math.ceil(island.offsetHeight);
     const key = `${width}x${height}`;
@@ -76,12 +115,19 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     fitting = true;
     try {
       const win = getCurrentWindow();
+      const [boxes, current, primary] = await Promise.all([monitorBoxes(), currentMonitor(), primaryMonitor()]);
+      const fallbackMonitor = current ?? primary;
+      const spot = resolvePlacement(getPlacement(), boxes, fallbackMonitor ? toBox(fallbackMonitor) : undefined);
+      if (spot) {
+        const origin = windowOrigin(spot.monitor, spot.xFrac, width * spot.monitor.scale);
+        await win.setPosition(new PhysicalPosition(origin.x, origin.y));
+      }
       await win.setSize(new LogicalSize(width, height));
-      const monitor = await currentMonitor();
-      if (monitor) {
-        const scale = monitor.scaleFactor;
-        const x = monitor.position.x / scale + (monitor.size.width / scale - width) / 2;
-        await win.setPosition(new LogicalPosition(Math.round(x), Math.round(monitor.position.y / scale)));
+      if (spot) {
+        // the size just changed, so centre again using the real physical width
+        const real = (await win.outerSize()).width;
+        const origin = windowOrigin(spot.monitor, spot.xFrac, real);
+        await win.setPosition(new PhysicalPosition(origin.x, origin.y));
       }
     } catch {
       // the next size change tries again
@@ -112,6 +158,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   }
 
   function currentMode(): Mode {
+    if (dragging) return island.dataset.mode as Mode;
     if (view === "settings" || modalOpen || pinned || alertOpen || hovering) return "home";
     const worst = worstTone();
     const active = musicPlaying || TONE_RANK[worst] >= TONE_RANK.warn;
@@ -286,6 +333,16 @@ export async function mountApp(root: HTMLElement): Promise<void> {
           hideWhenQuiet = value;
           setHideWhenQuiet(value);
         },
+        openDelayMs: openDelay,
+        onOpenDelayChange(ms) {
+          openDelay = ms;
+          setOpenDelay(ms);
+        },
+        onResetPosition() {
+          setPlacement(null);
+          lastSize = "";
+          void fitWindow();
+        },
         async onReload() {
           config = await loadConfig();
           renderAvatar();
@@ -299,14 +356,48 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     refresh();
   }
 
-  // ---- hover, pin and collapse ---------------------------------------------------------------
-  island.addEventListener("pointerenter", () => {
+  // ---- opening: rest the pointer on it for a moment (a ring shows the wait), or click ---------
+  let dwellTimer: ReturnType<typeof setTimeout> | undefined;
+  function stopDwell(): void {
+    clearTimeout(dwellTimer);
+    dwellTimer = undefined;
+    island.dataset.dwell = "off";
+    ring.hidden = true;
+  }
+  function openNow(): void {
+    stopDwell();
     clearTimeout(leaveTimer);
     hovering = true;
     wake();
     refresh();
+  }
+  function moveRing(event: PointerEvent): void {
+    const box = island.getBoundingClientRect();
+    // sits just below and right of the pointer, kept inside the window
+    const size = 22;
+    const x = Math.min(Math.max(event.clientX - box.left + 12, 0), Math.max(0, box.width - size));
+    const y = Math.min(Math.max(event.clientY - box.top + 10, 0), Math.max(0, box.height - size));
+    ring.style.transform = `translate(${x}px, ${y}px)`;
+  }
+
+  island.addEventListener("pointerenter", (event) => {
+    clearTimeout(leaveTimer);
+    if (dragging) return;
+    // already open (pinned, alert, or the pointer only stepped off for a moment): stay open
+    if (island.dataset.mode === "home" || hovering || openDelay === 0) return openNow();
+    island.style.setProperty("--dwell", `${openDelay}ms`);
+    island.dataset.dwell = "on";
+    ring.hidden = false;
+    moveRing(event);
+    clearTimeout(dwellTimer);
+    dwellTimer = setTimeout(openNow, openDelay);
+  });
+  island.addEventListener("pointermove", (event) => {
+    if (dwellTimer !== undefined) moveRing(event);
   });
   island.addEventListener("pointerleave", () => {
+    stopDwell();
+    if (dragging) return;
     clearTimeout(leaveTimer);
     leaveTimer = setTimeout(() => {
       hovering = false;
@@ -315,8 +406,82 @@ export async function mountApp(root: HTMLElement): Promise<void> {
       refresh();
     }, LEAVE_DELAY_MS);
   });
-  island.addEventListener("pointerdown", wake);
+  island.addEventListener("pointerdown", () => {
+    stopDwell();
+    wake();
+  });
+
+  // ---- moving: drag the avatar; the island slides along the top edge of the screen under the pointer
+  let dragFrom: { x: number; y: number; grab: number; boxes: MonitorBox[] } | null = null;
+  let dragBusy = false;
+  let justDragged = false;
+
+  perch.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0 || !inTauri) return;
+    perch.setPointerCapture(event.pointerId);
+    dragFrom = { x: event.clientX, y: event.clientY, grab: 0, boxes: [] };
+  });
+
+  async function beginDrag(): Promise<void> {
+    if (!dragFrom) return;
+    const win = getCurrentWindow();
+    const [cursor, position, size, boxes] = await Promise.all([cursorPosition(), win.outerPosition(), win.outerSize(), monitorBoxes()]);
+    dragFrom.boxes = boxes;
+    // keep the island under the pointer exactly where it was grabbed
+    dragFrom.grab = cursor.x - (position.x + size.width / 2);
+    dragging = true;
+    island.dataset.dragging = "on";
+    clearTimeout(leaveTimer);
+  }
+
+  async function dragStep(): Promise<void> {
+    if (!dragFrom || dragBusy) return;
+    dragBusy = true;
+    try {
+      const win = getCurrentWindow();
+      const [cursor, size] = await Promise.all([cursorPosition(), win.outerSize()]);
+      const monitor = monitorAt(dragFrom.boxes, cursor.x, cursor.y);
+      if (!monitor) return;
+      const xFrac = fracForCentre(monitor, cursor.x - dragFrom.grab);
+      const origin = windowOrigin(monitor, xFrac, size.width);
+      await win.setPosition(new PhysicalPosition(origin.x, origin.y));
+      setPlacement({ monitor: monitor.key, xFrac });
+    } catch {
+      // a missed frame; the next pointer move tries again
+    } finally {
+      dragBusy = false;
+    }
+  }
+
+  perch.addEventListener("pointermove", (event) => {
+    if (!dragFrom) return;
+    if (!dragging) {
+      if (Math.hypot(event.clientX - dragFrom.x, event.clientY - dragFrom.y) < DRAG_THRESHOLD_PX) return;
+      void beginDrag().then(dragStep);
+      return;
+    }
+    void dragStep();
+  });
+
+  function endDrag(event: PointerEvent): void {
+    if (perch.hasPointerCapture(event.pointerId)) perch.releasePointerCapture(event.pointerId);
+    const wasDragging = dragging;
+    dragFrom = null;
+    if (!wasDragging) return;
+    justDragged = true; // swallow the click that follows a drag
+    setTimeout(() => (justDragged = false), 0);
+    void dragStep().finally(() => {
+      dragging = false;
+      island.dataset.dragging = "off";
+      lastSize = "";
+      refresh();
+    });
+  }
+  perch.addEventListener("pointerup", endDrag);
+  perch.addEventListener("pointercancel", endDrag);
+
   perch.addEventListener("click", () => {
+    if (justDragged) return;
     pinned = !pinned;
     refresh();
   });
