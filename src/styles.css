@@ -873,3 +873,47 @@ input[type="checkbox"] {
 
 /* between "asked to open" and "window is big enough": nothing is drawn, so nothing can jump */
 .island.pre-open .island-body, .island.pre-open .perch { visibility: hidden; }
+
+/* Library ---------------------------------------------------------------- */
+input.switch {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: none;
+  width: 36px;
+  height: 20px;
+  margin: 0;
+  border-radius: 10px;
+  background: #3a4155;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+input.switch::after {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #aab1c4;
+  transition: transform 0.15s, background 0.15s;
+}
+input.switch:checked { background: var(--accent); }
+input.switch:checked::after { transform: translateX(16px); background: #1a1a1a; }
+input.switch:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  input.switch, input.switch::after { transition: none; }
+}
+.pill-setting { padding: 6px 0; border-bottom: 1px solid var(--line); }
+.pill-setting:last-of-type { border-bottom: 0; }
+.pill-setting > .row { min-height: 32px; }
+.row-main.wrap { white-space: normal; overflow: visible; }
+.add-row { margin-top: 4px; }
+.add-row .btn { flex: 1; }
+.btn.dashed { background: transparent; border: 1px dashed #4a5166; border-radius: 12px; min-height: 38px; }
+.examples { display: grid; gap: 8px; margin-top: 4px; }
+.example { padding: 8px 10px; border-radius: 12px; background: var(--bg-3); }
+.example-name { font-weight: 600; }
+.settings-sub { margin: 8px 0 0; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.btn:disabled { opacity: 0.55; cursor: default; }

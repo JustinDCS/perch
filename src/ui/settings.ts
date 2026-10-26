@@ -7,6 +7,7 @@ import { storeKey, type Store } from "../pills/variables";
 import { SOUND_MODES, type SoundMode } from "../sound/sounds";
 import { GAZE_MODES, getDisabledPills, getHiddenChips, OPEN_DELAYS, type GazeMode } from "../settings";
 import { clear, h } from "./dom";
+import { pillAdder } from "./library";
 
 const MAX_IMPORT_BYTES = 256 * 1024;
 
@@ -54,7 +55,7 @@ export function renderSettings(ctx: SettingsContext): HTMLElement {
   const root = h("div", { class: "settings" });
 
   // ---- behaviour ---------------------------------------------------------------------------
-  const quietBox = h("input", { type: "checkbox", attrs: { "aria-label": "Hide when nothing is happening" } });
+  const quietBox = h("input", { type: "checkbox", class: "switch", attrs: { "aria-label": "Hide when nothing is happening" } });
   quietBox.checked = ctx.hideWhenQuiet;
   quietBox.addEventListener("change", () => ctx.onHideWhenQuietChange(quietBox.checked));
 
@@ -66,7 +67,7 @@ export function renderSettings(ctx: SettingsContext): HTMLElement {
   volume.value = String(Math.round(ctx.soundVolume * 100));
   volume.addEventListener("change", () => ctx.onSoundVolumeChange(Number(volume.value) / 100));
 
-  const peekBox = h("input", { type: "checkbox", attrs: { "aria-label": "Peek out and wink now and then" } });
+  const peekBox = h("input", { type: "checkbox", class: "switch", attrs: { "aria-label": "Peek out and wink now and then" } });
   peekBox.checked = ctx.peeks;
   peekBox.addEventListener("change", () => ctx.onPeeksChange(peekBox.checked));
 
@@ -110,21 +111,23 @@ export function renderSettings(ctx: SettingsContext): HTMLElement {
     });
 
   const pillRows = ctx.config.pills.map((pill) => {
-    const box = h("input", { type: "checkbox", attrs: { "aria-label": `Show ${pill.name}` } });
+    const box = h("input", { type: "checkbox", class: "switch", attrs: { "aria-label": `Show ${pill.name}` } });
     box.checked = !disabled.has(pill.id);
     box.addEventListener("change", () => ctx.onPillToggle(pill.id, box.checked));
-    const chipBox = h("input", { type: "checkbox", attrs: { "aria-label": `Show ${pill.name} in the small view` } });
+    const chipBox = h("input", { type: "checkbox", class: "switch", attrs: { "aria-label": `Show ${pill.name} in the small view` } });
     chipBox.checked = !hiddenChips.has(pill.id);
     chipBox.addEventListener("change", () => ctx.onChipToggle(pill.id, chipBox.checked));
     const fields = pill.kind === "rest" ? variableFields(pill) : [];
     return h(
       "div",
       { class: "pill-setting" },
-      h("label", { class: "row" }, box, h("span", { class: "row-main", text: pill.name }), h("span", { class: "row-meta", text: pill.kind })),
-      h("label", { class: "row sub" }, chipBox, h("span", { class: "row-main", text: "Show in the small view" })),
+      h("label", { class: "row" }, h("span", { class: "row-main", text: pill.name }), h("span", { class: "row-meta", text: pill.kind === "rest" ? "web" : "media" }), box),
+      h("label", { class: "row sub" }, h("span", { class: "row-main", text: "Show in the small view" }), chipBox),
       ...fields,
     );
   });
+
+  const adder = pillAdder(new Set(ctx.config.pills.map((p) => p.id)), ctx.onReload);
 
   // ---- secrets ---------------------------------------------------------------------------
   const secretNames = [...new Set(ctx.config.pills.flatMap(secretsOf))];
@@ -279,13 +282,26 @@ export function renderSettings(ctx: SettingsContext): HTMLElement {
         );
 
   root.append(
+    section("Pills", ...pillRows, adder.buttons, adder.panel),
+    section(
+      "Avatar",
+      select,
+      h("div", { class: "row" }, h("button", { class: "btn", text: "Import avatar JSON…", on: { click: () => fileInput.click() } }), fileInput),
+      importErrors,
+    ),
+    section(
+      "Secrets and access",
+      h("p", { class: "muted", text: "Secrets are stored in your system's credential store. Perch never shows them again." }),
+      secretsBody,
+      h("h4", { class: "settings-sub", text: "Approved hosts" }),
+      hostsBody,
+    ),
     section(
       "Behaviour",
-      h("label", { class: "row" }, quietBox, h("span", { class: "row-main", text: "Shrink to a sliver when nothing is happening" })),
-      h("p", { class: "muted", text: "Rest the pointer on it to bring it back. Music and alerts always show." }),
-      h("label", { class: "row" }, h("span", { class: "row-main", text: "Open after resting the pointer" }), delaySelect),
-      h("label", { class: "row" }, peekBox, h("span", { class: "row-main", text: "Peek out and wink now and then while hidden" })),
-      h("label", { class: "row" }, h("span", { class: "row-main", text: "Eyes follow the pointer" }), gazeSelect),
+      h("label", { class: "row" }, h("span", { class: "row-main wrap", text: "Open after resting the pointer" }), delaySelect),
+      h("label", { class: "row" }, h("span", { class: "row-main wrap", text: "Eyes follow the pointer" }), gazeSelect),
+      h("label", { class: "row" }, h("span", { class: "row-main wrap", text: "Shrink to a sliver when nothing is happening" }), quietBox),
+      h("label", { class: "row" }, h("span", { class: "row-main wrap", text: "Peek out and wink now and then while hidden" }), peekBox),
       h("p", { class: "muted", text: "Drag the avatar to move Perch along the top of any screen." }),
       h("div", { class: "row" }, h("button", { class: "btn", text: "Centre on this screen", on: { click: () => ctx.onResetPosition() } })),
     ),
@@ -295,15 +311,6 @@ export function renderSettings(ctx: SettingsContext): HTMLElement {
       h("label", { class: "row" }, h("span", { class: "row-main", text: "Volume" }), volume),
       h("div", { class: "row" }, h("button", { class: "btn", text: "Test the alert sound", on: { click: () => ctx.onSoundTest() } })),
       h("p", { class: "muted", text: "Small synthesised blips, quiet by default. Alerts only keeps just the \"hey\" chirp when a pill turns red." }),
-    ),
-    section("Pills", ...pillRows),
-    section("Secrets", h("p", { class: "muted", text: "Stored in Windows Credential Manager. Perch never shows them again." }), secretsBody),
-    section("Approved hosts", hostsBody),
-    section(
-      "Avatar",
-      select,
-      h("div", { class: "row" }, h("button", { class: "btn", text: "Import avatar JSON…", on: { click: () => fileInput.click() } }), fileInput),
-      importErrors,
     ),
     ...(problems ? [problems] : []),
     section(

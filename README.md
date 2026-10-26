@@ -93,6 +93,10 @@ Perch lists every app that reports media to Windows. When there is more than one
 
 Small synthesised blips (no audio files): a two-chirp "hey" when a pill turns red, a tick when the island opens, a pop on a new track, a little arpeggio when music starts, a squeak and a thud when you grab and drop it, and tiny sounds for the peek, the wink, falling asleep and waking. Library → Sounds sets *All sounds*, *Alerts only* or *Off* and the volume (default 35%). Each sound has a cooldown so nothing repeats rapidly. The window is allowed to play audio without a click first (`additionalBrowserArgs` in `tauri.conf.json`).
 
+## Library
+
+Open the Library with the sliders icon (or the tray menu). **Pills** has a switch per pill (and for whether it shows in the small view), the blanks a pill asks for, **+ Add from file** (a pill `.json` is checked, then copied into your config folder) and **Browse examples** (the Jira, GitHub and approval examples that ship inside Perch, one click each). **Avatar**, **Secrets and access**, **Behaviour** and **Sounds** follow.
+
 ## Pill manifest
 
 ```json
