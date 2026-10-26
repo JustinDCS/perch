@@ -369,6 +369,17 @@ input[type="checkbox"] {
   justify-content: space-between;
   gap: 10px;
 }
+.list-row.link {
+  margin: 0 -6px;
+  padding: 3px 6px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.list-row.link:hover,
+.list-row.link:focus-visible {
+  background: color-mix(in srgb, var(--c) 18%, transparent);
+  outline: none;
+}
 .list-title {
   overflow: hidden;
   text-overflow: ellipsis;

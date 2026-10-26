@@ -1,0 +1,22 @@
+{
+  "perch": 1,
+  "id": "jira-assigned",
+  "name": "Assigned to me",
+  "kind": "rest",
+  "icon": "🎫",
+  "accent": "#a9c4ff",
+  "refreshSeconds": 120,
+  "request": {
+    "url": "https://your-site.atlassian.net/rest/api/3/search/jql?jql=assignee%20%3D%20currentUser()%20AND%20statusCategory%20!%3D%20Done%20ORDER%20BY%20updated%20DESC&fields=summary,status&maxResults=5",
+    "method": "GET",
+    "auth": { "type": "basic", "user": "you@example.com", "secret": "jira-token" }
+  },
+  "display": {
+    "layout": "list",
+    "items": "issues",
+    "title": "{key} {fields.summary}",
+    "subtitle": "{fields.status.name}",
+    "link": "https://your-site.atlassian.net/browse/{key}",
+    "limit": 5
+  }
+}

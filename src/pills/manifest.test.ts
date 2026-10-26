@@ -168,3 +168,31 @@ describe("pill accent colour", () => {
     expect(validatePill({ ...base, accent: "url(javascript:1)" }).ok).toBe(false);
   });
 });
+
+describe("list rows: templates and links", () => {
+  const list = (display: Record<string, unknown>) => rest({ display: { layout: "list", items: "issues", title: "key", ...display } });
+
+  it("accepts templates for title and subtitle", () => {
+    const result = validatePill(list({ title: "{key} {fields.summary}", subtitle: "{fields.status.name}" }));
+    expect(result.ok).toBe(true);
+    if (result.ok && result.value.kind === "rest" && result.value.display.layout === "list") {
+      expect(result.value.display.title).toBe("{key} {fields.summary}");
+    }
+  });
+  it("accepts a link template", () => {
+    const result = validatePill(list({ link: "https://example.atlassian.net/browse/{key}" }));
+    expect(result.ok && result.value.kind === "rest" && result.value.display.layout === "list" ? result.value.display.link : null).toBe(
+      "https://example.atlassian.net/browse/{key}",
+    );
+  });
+  it("accepts a link that comes straight from the response", () => {
+    expect(validatePill(list({ link: "{html_url}" })).ok).toBe(true);
+  });
+  it("rejects bad templates and links", () => {
+    expect(errorsOf(list({ title: "{key" })).join()).toContain("display.title");
+    expect(errorsOf(list({ subtitle: "{__proto__}" })).join()).toContain("display.subtitle");
+    expect(errorsOf(list({ link: "javascript:alert(1)" })).join()).toContain("display.link");
+    expect(errorsOf(list({ link: "ftp://example.com/{key}" })).join()).toContain("display.link");
+    expect(errorsOf(list({ link: "https://example.com/{" })).join()).toContain("display.link");
+  });
+});

@@ -25,7 +25,7 @@ Verified so far, on Linux and in a headless browser: the safety rules in Rust (`
 all manifest / avatar / path validation (`npm test`), the type-check, the production build, and the UI
 flows (approval prompt, thresholds driving the avatar, avatar import) against a built-in mock.
 
-**Not yet verified:** seek dragging, Apple Music / browser sources, REST pills with a secret, the list layout, and the tray menu items.
+**Not yet verified:** seek dragging, Apple Music / browser sources, REST pills with a secret (the Jira examples), row links, and the tray menu items.
 
 ## Run it
 
@@ -128,10 +128,19 @@ Small synthesised blips (no audio files): a two-chirp "hey" when a pill turns re
 * `request.method`: `GET` (default) or `POST` (`body` is only allowed with `POST`). `refreshSeconds`: 5 to 86400, default 60.
 * `display.layout: "stat"`: `value` (path), optional `label`, `unit`, and `thresholds`. The first matching rule wins; each rule has
   `gte` / `lte` / `equals` and a `tone` of `neutral`, `good`, `warn` or `danger`.
-* `display.layout: "list"`: `items` (path to an array), `title` and optional `subtitle` (paths inside each item), `limit` (1 to 20).
+* `display.layout: "list"`: `items` (path to an array), `title` and optional `subtitle`, `limit` (1 to 20). `title` and `subtitle` are either a path inside each item (`fields.summary`) or a template with holes (`{key} {fields.summary}`). An optional `link` is a web address template (`https://your-site.atlassian.net/browse/{key}`, or `{html_url}` to use a link from the response); clicking the row opens it in your browser, but only if its host is one you have approved.
 * Paths use names, dots and `[0]` indexes, e.g. `fields.summary` or `issues[0].key`. `.length` works on arrays.
 
 A pill whose tone is `danger` makes the avatar switch to its **attention** state.
+
+### Example: Jira Cloud
+
+Two examples are in `examples/pips/`: `jira-open-tickets.json` (a count that turns amber and red) and `jira-assigned-to-me.json` (your five most recently updated tickets, each one opening in Jira).
+
+1. Create an API token at <https://id.atlassian.com/manage-profile/security/api-tokens>.
+2. In Perch: Library → Secrets, add a secret named `jira-token` and paste the token. It goes to Windows Credential Manager and is never shown again.
+3. Copy the example into your config folder (Library → Open config folder → `pips`), then change `your-site` to your Jira site name and `you@example.com` to the email you sign in with. Edit the JQL to taste.
+4. Library → Reload. The pill asks to contact your site: choose Allow. The row links use the same host, so they work after that.
 
 ## Avatar format
 

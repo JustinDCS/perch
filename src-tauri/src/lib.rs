@@ -84,6 +84,7 @@ pub fn run() {
             media::media_get_thumbnail,
             media::media_control,
             net::fetch_json,
+            net::open_url,
             net::approved_hosts,
             net::approve_host,
             net::revoke_host,

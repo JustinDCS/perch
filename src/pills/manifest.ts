@@ -1,4 +1,4 @@
-import { isValidPath } from "../lib/jsonpath";
+import { isTemplate, isValidPath, isValidTemplate } from "../lib/jsonpath";
 import {
   type Errs,
   type Result,
@@ -62,6 +62,32 @@ function validatePath(v: unknown, path: string, errs: Errs): string | undefined 
   const s = str(v, path, errs, { max: 120 });
   if (s !== undefined && !isValidPath(s)) {
     errs.push(`${path}: not a valid path (use names, dots and [0] indexes)`);
+    return undefined;
+  }
+  return s;
+}
+
+/** A path ("fields.summary") or a template ("{key} {fields.summary}"). */
+function validateText(v: unknown, path: string, errs: Errs): string | undefined {
+  const s = str(v, path, errs, { max: 160 });
+  if (s === undefined) return undefined;
+  if (isTemplate(s) ? !isValidTemplate(s) : !isValidPath(s)) {
+    errs.push(`${path}: not a valid path or template (use names, dots, [0] indexes and {holes})`);
+    return undefined;
+  }
+  return s;
+}
+
+/** Always a template: literal text with optional {path} holes, such as "https://site/browse/{key}". */
+function validateLink(v: unknown, path: string, errs: Errs): string | undefined {
+  const s = str(v, path, errs, { max: 300 });
+  if (s === undefined) return undefined;
+  if (!/^https?:\/\//i.test(s) && !s.startsWith("{")) {
+    errs.push(`${path}: must start with https:// or be a {path} to a link in the response`);
+    return undefined;
+  }
+  if (!isValidTemplate(s)) {
+    errs.push(`${path}: not a valid template (every {hole} must be a path)`);
     return undefined;
   }
   return s;
@@ -198,16 +224,18 @@ function validateDisplay(raw: unknown, errs: Errs): StatDisplay | ListDisplay | 
   }
 
   if (layout === "list") {
-    noUnknownKeys(raw, ["layout", "items", "title", "subtitle", "limit"], "display", errs);
+    noUnknownKeys(raw, ["layout", "items", "title", "subtitle", "link", "limit"], "display", errs);
     const items = validatePath(raw.items, "display.items", errs);
-    const title = validatePath(raw.title, "display.title", errs);
-    const subtitle = has(raw, "subtitle") ? validatePath(raw.subtitle, "display.subtitle", errs) : undefined;
+    const title = validateText(raw.title, "display.title", errs);
+    const subtitle = has(raw, "subtitle") ? validateText(raw.subtitle, "display.subtitle", errs) : undefined;
+    const link = has(raw, "link") ? validateLink(raw.link, "display.link", errs) : undefined;
     const limit = has(raw, "limit")
       ? num(raw.limit, "display.limit", errs, { min: 1, max: 20, int: true })
       : 5;
     if (!items || !title || limit === undefined) return undefined;
     const display: ListDisplay = { layout, items, title, limit };
     if (subtitle) display.subtitle = subtitle;
+    if (link) display.link = link;
     return display;
   }
 

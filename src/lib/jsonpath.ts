@@ -62,6 +62,42 @@ export function getPath(data: unknown, path: string): unknown {
   return current;
 }
 
+// ---- templates: text with {path} holes, e.g. "{key} {fields.summary}" -----------------------
+
+/** Does this string use {path} holes? Plain paths are not templates. */
+export function isTemplate(text: string): boolean {
+  return text.includes("{");
+}
+
+/** Every {…} must hold a valid path, and braces must pair up. */
+export function isValidTemplate(text: string): boolean {
+  let i = 0;
+  while (i < text.length) {
+    const c = text[i];
+    if (c === "}") return false;
+    if (c === "{") {
+      const end = text.indexOf("}", i);
+      if (end < 0) return false;
+      const inner = text.slice(i + 1, end);
+      if (inner.includes("{") || !isValidPath(inner)) return false;
+      i = end + 1;
+      continue;
+    }
+    i++;
+  }
+  return true;
+}
+
+/** Fill the holes from `data`. Missing values show as an em dash, never as "undefined". */
+export function renderTemplate(text: string, data: unknown): string {
+  return text.replace(/\{([^{}]*)\}/g, (_, path: string) => formatValue(getPath(data, path)));
+}
+
+/** A display field is either a plain path or a template. */
+export function textOf(data: unknown, spec: string): string {
+  return isTemplate(spec) ? renderTemplate(spec, data) : formatValue(getPath(data, spec));
+}
+
 export function toNumber(value: unknown): number | undefined {
   if (typeof value === "number" && Number.isFinite(value)) return value;
   if (typeof value === "string" && value.trim() !== "") {

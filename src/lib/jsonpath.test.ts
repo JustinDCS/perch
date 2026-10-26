@@ -56,3 +56,39 @@ describe("value helpers", () => {
     expect(formatValue(null)).toBe("—");
   });
 });
+
+import { isTemplate, isValidTemplate, renderTemplate, textOf } from "./jsonpath";
+
+describe("templates", () => {
+  const issue = { key: "DD-107", fields: { summary: "Perch companion", status: { name: "In Progress" }, votes: 3 } };
+
+  it("tells templates from plain paths", () => {
+    expect(isTemplate("{key}")).toBe(true);
+    expect(isTemplate("fields.summary")).toBe(false);
+  });
+  it("fills the holes", () => {
+    expect(renderTemplate("{key} {fields.summary}", issue)).toBe("DD-107 Perch companion");
+    expect(renderTemplate("https://x.test/browse/{key}", issue)).toBe("https://x.test/browse/DD-107");
+    expect(renderTemplate("{fields.votes} votes", issue)).toBe("3 votes");
+  });
+  it("shows a dash for missing values, never undefined or [object Object]", () => {
+    expect(renderTemplate("{nope} / {fields.status}", issue)).toBe("— / —");
+  });
+  it("textOf handles both forms", () => {
+    expect(textOf(issue, "fields.summary")).toBe("Perch companion");
+    expect(textOf(issue, "{key}: {fields.status.name}")).toBe("DD-107: In Progress");
+  });
+  it("validates braces and paths", () => {
+    expect(isValidTemplate("{key} - {fields.summary}")).toBe(true);
+    expect(isValidTemplate("no holes at all")).toBe(true);
+    expect(isValidTemplate("{key")).toBe(false);
+    expect(isValidTemplate("key}")).toBe(false);
+    expect(isValidTemplate("{ke{y}}")).toBe(false);
+    expect(isValidTemplate("{__proto__}")).toBe(false);
+    expect(isValidTemplate("{}")).toBe(false);
+  });
+  it("cannot reach inherited or blocked properties through a template", () => {
+    expect(renderTemplate("{constructor.name}", issue)).toBe("—");
+    expect(renderTemplate("{toString}", issue)).toBe("—");
+  });
+});

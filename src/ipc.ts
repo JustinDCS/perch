@@ -52,6 +52,8 @@ export interface Ipc {
   listUserFiles(kind: FileKind): Promise<UserFile[]>;
   saveUserFile(kind: FileKind, name: string, content: string): Promise<string>;
   openConfigDir(): Promise<void>;
+  /** Open a web address in the default browser. Only for hosts the user has approved. */
+  openUrl(url: string): Promise<void>;
 }
 
 export const inTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -70,6 +72,7 @@ const real: Ipc = {
   listUserFiles: (kind) => invoke<UserFile[]>("list_user_files", { kind }),
   saveUserFile: (kind, name, content) => invoke<string>("save_user_file", { kind, name, content }),
   openConfigDir: () => invoke("open_config_dir"),
+  openUrl: (url) => invoke("open_url", { url }),
 };
 
 // ---- browser mock (development only) -------------------------------------------------------
@@ -79,6 +82,27 @@ function createMock(): Ipc {
   const secrets = new Set<string>();
   const files: Record<FileKind, UserFile[]> = {
     pips: [
+      {
+        name: "demo-assigned.json",
+        content: JSON.stringify({
+          perch: 1,
+          id: "demo-assigned",
+          name: "Assigned to me",
+          kind: "rest",
+          icon: "🎫",
+          accent: "#a9c4ff",
+          refreshSeconds: 60,
+          request: { url: "https://mock.example.test/issues" },
+          display: {
+            layout: "list",
+            items: "issues",
+            title: "{key} {fields.summary}",
+            subtitle: "{fields.status.name}",
+            link: "https://mock.example.test/browse/{key}",
+            limit: 5,
+          },
+        }),
+      },
       {
         name: "demo-open-tickets.json",
         content: JSON.stringify({
@@ -153,7 +177,15 @@ function createMock(): Ipc {
       const host = new URL(req.url).host;
       if (!approved.has(host)) throw `HOST_NOT_APPROVED:${host}`;
       if (req.auth && !secrets.has(req.auth.secret)) throw `SECRET_MISSING:${req.auth.secret}`;
-      return { count: 3 + Math.floor((Date.now() / 5000) % 9), items: [] };
+      return {
+        count: 3 + Math.floor((Date.now() / 5000) % 9),
+        items: [],
+        issues: [
+          { key: "DD-107", fields: { summary: "Perch companion app", status: { name: "In Progress" } } },
+          { key: "DD-91", fields: { summary: "Invoice export for JAE", status: { name: "To Do" } } },
+          { key: "DD-88", fields: { summary: "Review the SEO scan results page", status: { name: "In Review" } } },
+        ],
+      };
     },
     async approvedHosts() {
       return [...approved];
@@ -183,6 +215,11 @@ function createMock(): Ipc {
     },
     async openConfigDir() {
       // nothing to open in a browser
+    },
+    async openUrl(url) {
+      const host = new URL(url).host;
+      if (!approved.has(host)) throw `HOST_NOT_APPROVED:${host}`;
+      (window as unknown as { __lastOpened?: string }).__lastOpened = url;
     },
   };
 }

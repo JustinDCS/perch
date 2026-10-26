@@ -1,7 +1,7 @@
 // REST/JSON pill. The manifest says where to fetch, how to authenticate (by secret *name*),
 // and which fields of the response to show. The request itself is made by Rust.
 
-import { formatValue, getPath } from "../lib/jsonpath";
+import { formatValue, getPath, renderTemplate, textOf } from "../lib/jsonpath";
 import { errorText, ipc } from "../ipc";
 import { clear, h } from "../ui/dom";
 import { hostOf } from "./manifest";
@@ -64,9 +64,24 @@ export function createRestPill(manifest: RestPill, host: PillHost): PillView {
     }
     const list = h("ul", { class: "list" });
     for (const item of items.slice(0, display.limit)) {
-      const row = h("li", { class: "list-row" }, h("span", { class: "list-title", text: formatValue(getPath(item, display.title)) }));
+      const row = h("li", { class: "list-row" }, h("span", { class: "list-title", text: textOf(item, display.title) }));
       if (display.subtitle) {
-        row.append(h("span", { class: "list-subtitle", text: formatValue(getPath(item, display.subtitle)) }));
+        row.append(h("span", { class: "list-subtitle", text: textOf(item, display.subtitle) }));
+      }
+      if (display.link) {
+        const target = renderTemplate(display.link, item);
+        row.classList.add("link");
+        row.setAttribute("role", "link");
+        row.tabIndex = 0;
+        row.title = target;
+        const open = () => void ipc.openUrl(target).catch(handleError);
+        row.addEventListener("click", open);
+        row.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            open();
+          }
+        });
       }
       list.append(row);
     }

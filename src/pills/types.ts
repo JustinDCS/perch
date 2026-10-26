@@ -32,6 +32,8 @@ export interface ListDisplay {
   items: string;
   title: string;
   subtitle?: string;
+  /** a template for a web address; the row opens it when clicked */
+  link?: string;
   limit: number;
 }
 

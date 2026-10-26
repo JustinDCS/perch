@@ -141,6 +141,36 @@ pub async fn fetch_json(
     serde_json::from_slice(&body).map_err(|_| "response is not valid JSON".to_string())
 }
 
+/// Open a web address in the default browser, but only for hosts the user has approved for
+/// requests: a pill cannot use this to send the user to an arbitrary site.
+#[tauri::command]
+pub fn open_url(state: State<'_, AppState>, url: String) -> Result<(), String> {
+    let checked = check_url(&url).map_err(|e| e.to_string())?;
+    {
+        let approvals = state
+            .approvals
+            .lock()
+            .map_err(|_| "internal state error".to_string())?;
+        if !approvals.is_approved(&checked.host_key) {
+            return Err(format!("HOST_NOT_APPROVED:{}", checked.host_key));
+        }
+    }
+
+    #[cfg(windows)]
+    let opener = "explorer";
+    #[cfg(target_os = "macos")]
+    let opener = "open";
+    #[cfg(all(not(windows), not(target_os = "macos")))]
+    let opener = "xdg-open";
+
+    // the address is passed as one argument, never through a shell
+    std::process::Command::new(opener)
+        .arg(checked.url.as_str())
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| format!("could not open the link: {e}"))
+}
+
 #[tauri::command]
 pub fn approved_hosts(state: State<'_, AppState>) -> Result<Vec<String>, String> {
     let approvals = state
