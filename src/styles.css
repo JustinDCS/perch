@@ -870,3 +870,6 @@ input[type="checkbox"] {
 @media (prefers-reduced-motion: reduce) {
   .island.opening .island-body, .island-ghost { animation: none; }
 }
+
+/* between "asked to open" and "window is big enough": nothing is drawn, so nothing can jump */
+.island.pre-open .island-body, .island.pre-open .perch { visibility: hidden; }

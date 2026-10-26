@@ -145,14 +145,42 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   const CLOSE_MS = 200;
   const reducedMotion = (): boolean => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+  const sizeKey = (): string => `${Math.ceil(island.offsetWidth)}x${Math.ceil(island.offsetHeight)}`;
+  const frame = (): Promise<void> => new Promise((resolve) => requestAnimationFrame(() => resolve()));
+
+  /** Resolves once the window has been resized to fit the island (or after a short limit). */
+  async function windowSettled(): Promise<void> {
+    if (!inTauri) return;
+    const deadline = Date.now() + 600;
+    while (Date.now() < deadline) {
+      await fitWindow();
+      if (!fitting && sizeKey() === lastSize) break;
+      await new Promise((resolve) => setTimeout(resolve, 16));
+    }
+    await frame();
+    await frame(); // let the web view paint at the new size before anything is shown
+  }
+
+  let openToken = 0;
   function animateModeChange(from: Mode | undefined, to: Mode): void {
-    if (!from || from === to || dragging || reducedMotion()) return;
+    if (!from || from === to || dragging) return;
+    const token = ++openToken;
     if (to === "home") {
+      // The window grows a few frames after the page does. Showing the card before that clips it
+      // and makes it jump, so hide it, wait for the window, then reveal it.
+      if (reducedMotion() || !inTauri) return;
       island.classList.remove("opening");
-      void island.offsetWidth; // restart the animation if it was still running
-      island.classList.add("opening");
-      setTimeout(() => island.classList.remove("opening"), OPEN_MS + 40);
-    } else if (from === "home" && !islandBody.hidden) {
+      island.classList.add("pre-open");
+      void windowSettled().then(() => {
+        if (token !== openToken) return;
+        island.classList.remove("pre-open");
+        void island.offsetWidth;
+        island.classList.add("opening");
+        setTimeout(() => island.classList.remove("opening"), OPEN_MS + 40);
+      });
+    } else {
+      island.classList.remove("pre-open", "opening");
+      if (reducedMotion() || from !== "home" || islandBody.hidden) return;
       const ghost = islandBody.cloneNode(true) as HTMLElement;
       ghost.classList.add("island-ghost");
       ghost.setAttribute("aria-hidden", "true");
