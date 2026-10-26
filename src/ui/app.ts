@@ -137,12 +137,54 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     return (await availableMonitors()).map(toBox);
   }
 
+  // ---- opening and closing -------------------------------------------------------------------
+  // Cheap on purpose: nothing runs while the island sits still. Opening reveals the card with a
+  // short clip-path animation (the window has already grown, and it is transparent). Closing
+  // animates a copy of the card away and keeps the window big until that is done, then shrinks it.
+  const OPEN_MS = 240;
+  const CLOSE_MS = 200;
+  const reducedMotion = (): boolean => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function animateModeChange(from: Mode | undefined, to: Mode): void {
+    if (!from || from === to || dragging || reducedMotion()) return;
+    if (to === "home") {
+      island.classList.remove("opening");
+      void island.offsetWidth; // restart the animation if it was still running
+      island.classList.add("opening");
+      setTimeout(() => island.classList.remove("opening"), OPEN_MS + 40);
+    } else if (from === "home" && !islandBody.hidden) {
+      const ghost = islandBody.cloneNode(true) as HTMLElement;
+      ghost.classList.add("island-ghost");
+      ghost.setAttribute("aria-hidden", "true");
+      ghost.style.left = `${islandBody.offsetLeft}px`;
+      ghost.style.width = `${islandBody.offsetWidth}px`;
+      island.append(ghost);
+      setTimeout(() => ghost.remove(), CLOSE_MS + 60);
+    }
+  }
+
+  let shrinkTimer: ReturnType<typeof setTimeout> | undefined;
+  let shrinkReady = false;
+
   async function fitWindow(): Promise<void> {
     if (!inTauri || fitting || dragging) return;
     const width = Math.ceil(island.offsetWidth);
     const height = Math.ceil(island.offsetHeight);
     const key = `${width}x${height}`;
     if (width < 40 || height < 8 || key === lastSize) return;
+    const [lastW = 0, lastH = 0] = lastSize.split("x").map(Number);
+    if (width * height < lastW * lastH && !shrinkReady && !reducedMotion()) {
+      // wait for the closing animation before the window gets smaller
+      shrinkTimer ??= setTimeout(() => {
+        shrinkTimer = undefined;
+        shrinkReady = true;
+        void fitWindow();
+      }, CLOSE_MS + 40);
+      return;
+    }
+    clearTimeout(shrinkTimer);
+    shrinkTimer = undefined;
+    shrinkReady = false;
     lastSize = key;
     fitting = true;
     try {
@@ -317,7 +359,9 @@ export async function mountApp(root: HTMLElement): Promise<void> {
 
     paintChips();
     island.dataset.tone = worstTone();
-    island.dataset.mode = currentMode();
+    const nextMode = currentMode();
+    animateModeChange(island.dataset.mode as Mode | undefined, nextMode);
+    island.dataset.mode = nextMode;
     perch.setAttribute("aria-pressed", String(pinned));
     perch.title = pinned ? "Let go" : "Keep open";
     perch.setAttribute("aria-label", perch.title);

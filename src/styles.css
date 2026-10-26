@@ -849,3 +849,24 @@ input[type="checkbox"] {
 .approval + .approval.approval-failed, .approval + .approval.approval-done { border-top: 0; }
 .approval-done { display: flex; margin-top: 4px; align-items: center; gap: 10px; background: #1f332f; font-size: 14px; font-weight: 600; color: #d9f3ea; }
 .approval-check { color: #6fdcb8; font-weight: 800; }
+
+/* opening and closing: only while it happens, and only clip-path / opacity / transform */
+.island.opening .island-body { animation: island-open 240ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.island-ghost {
+  position: absolute;
+  top: 0;
+  z-index: 1;
+  pointer-events: none;
+  animation: island-close 200ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+@keyframes island-open {
+  from { clip-path: inset(0 -24px 88% -24px round 0 0 26px 26px); opacity: 0.5; transform: translateY(-6px); }
+  to { clip-path: inset(0 -24px -24px -24px round 0 0 26px 26px); opacity: 1; transform: none; }
+}
+@keyframes island-close {
+  from { clip-path: inset(0 -24px -24px -24px round 0 0 26px 26px); opacity: 1; transform: none; }
+  to { clip-path: inset(0 -24px 90% -24px round 0 0 26px 26px); opacity: 0; transform: translateY(-6px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .island.opening .island-body, .island-ghost { animation: none; }
+}
