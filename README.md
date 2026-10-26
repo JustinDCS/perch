@@ -1,67 +1,69 @@
-# Perch
+<h1 align="center">Perch</h1>
 
-A small always-on-top desktop companion for Windows and macOS. It sits at the top of your screen with an
-avatar and a stack of **pills**: little cards that show what you want to glance at, like the song
-that is playing or a number from one of your APIs.
+<p align="center">
+  <b>A tiny companion that lives at the top of your screen.</b><br>
+  Music, tickets, build status and "can I deploy?" questions, one glance away.
+</p>
 
-Pills and avatars are **user-defined**. They are small JSON files, not code, so one person can have
-a now-playing pill and a ticket counter, and someone else a different avatar and a different API.
+<p align="center">
+  Windows · macOS · Tauri 2 · No accounts · Your data stays on your machine
+</p>
 
-> Tracked in Jira as **DD-107** (research: DD-98).
+---
 
-## Status: MVP scaffold
+Perch is an always-on-top island with a little avatar and a stack of **pills**: small cards that show what you want to see. It stays out of the way until something happens, then perks up, plays a chime and tells you.
 
-What is in this first slice:
+## What it does
 
-| Piece | State |
-|---|---|
-| Transparent, always-on-top overlay window with tray icon | written, **verified on Windows 11** (overlay, tray build, window sizing) |
-| **Now-playing pill** (Windows media session: Spotify, Apple Music, browsers…) with title, artist, artwork, previous / play-pause / next, progress and seek | **verified on Windows 11 with Spotify** (metadata, artwork, play/pause, previous/next, progress) |
-| **REST/JSON pill** driven by a manifest (poll an API, map fields, colour by thresholds, secrets from the system credential store, host approval) | **verified on Windows 11** with the public GitHub API (host approval, polling, stat layout); auth headers and secrets not yet tried live |
-| **Avatar** (Perch's own amber default, or an uploaded file) reacting to idle / music / attention / asleep | working in a browser; not yet seen on Windows |
-| Settings: toggle pills, set secrets, review approved hosts, import avatars | working (tested in a browser) |
+* **Now playing.** Title, artist, artwork, previous / play-pause / next, progress and seeking. Spotify, Apple Music and (on Windows) anything with a media session.
+* **Anything with an API.** A pill polls a JSON address and shows a number, a status or a list: open Jira tickets, GitHub stars, a deploy status. Colours change with thresholds, rows link to the source.
+* **Approval cards.** A pill can show a question with one to three buttons (Approve / Reject). The button only sends the request written in the pill file, and risky ones ask twice.
+* **Local inbox.** Scripts and tools on your own PC can ask you a question through a loopback-only, key-protected endpoint. Off by default.
+* **An avatar with moods.** Idle, listening, alert, asleep. Use Perch's own or bring your own.
+* **A Library.** Add a pill from a bundled example or from a file in one click. Variables (your site, your email) are filled in from Settings, never edited in JSON.
 
-Verified so far, on Linux and in a headless browser: the safety rules in Rust (`cargo test -p perch-core`),
-all manifest / avatar / path validation (`npm test`), the type-check, the production build, and the UI
-flows (approval prompt, thresholds driving the avatar, avatar import) against a built-in mock.
+Pills and avatars are **small JSON files, not code**, so nothing you add can run anything on your PC.
 
-**Not yet verified:** approval cards on Windows (they work in the browser mock), seek dragging, Apple Music / browser sources, and the tray menu items (Show / hide, Open Library, Centre on this screen, Open config folder, Quit). REST pills with a secret, variables and row links are verified with the Jira examples.
+## Safe by design
 
-## Trying a test build
+* Secrets live in the system credential store (Windows Credential Manager, macOS Keychain). The page can save one but nothing can read it back.
+* Every address a pill talks to must be on a host **you approved**.
+* Nothing answers a request for you, and an unanswered request never times out into a yes.
 
-1. Download the installer from the repository's **Releases** page (`.exe` or `.msi` for Windows, `.dmg` for Mac). The repository is private, so you need to be added to it first.
-2. **Windows:** SmartScreen may say "unknown publisher" because the build is not signed. Choose **More info → Run anyway**.
-3. **Mac:** see [macOS](#macos) (right-click → Open the first time).
-4. Perch sits at the top of the screen; use the tray / menu bar icon for Show / hide, Library and Quit. Settings has the pill Library and the avatar picker.
+Details are in [Security model](#security-model).
 
-**Known issues in test builds:** dragging the progress bar to seek, the local inbox and approval cards have only been tried in a browser mock, not on a real PC; on a Mac only Spotify and Apple Music are read; builds are unsigned and there is no auto-update (install the next build over the top).
+## Get it
 
-**Feedback:** send what you did, what you expected and what happened to Justin, with a screenshot if you can. Settings → Problems lists the last errors; copy them in.
+Download the installer from the **Releases** page: `.exe` / `.msi` for Windows, `.dmg` for Mac.
 
-## Run it
+1. **Windows:** SmartScreen may warn about an unknown publisher (the build is not signed yet). Choose **More info → Run anyway**.
+2. **Mac:** right-click Perch and choose **Open** the first time. See [macOS](#macos).
+3. Perch appears at the top of the screen. The tray / menu bar icon has Show / hide, Library, Centre on this screen and Quit.
 
-Prerequisites on Windows 10/11: [Node 20+](https://nodejs.org), [Rust](https://rustup.rs) with the
-MSVC build tools, and the WebView2 runtime (already on Windows 11).
+This is an early test version. There is no auto-update: install the next build over the top.
 
-```powershell
+**Known issues:** seek dragging, the local inbox and approval cards against real services are still being proven on real PCs; on a Mac only Spotify and Apple Music are read; builds are unsigned.
+
+**Feedback:** tell Justin what you did, what you expected and what happened, with a screenshot if you can. Settings → Problems lists the last errors; copy them in.
+
+## Build it yourself
+
+Prerequisites: [Node 20+](https://nodejs.org), [Rust](https://rustup.rs), and on Windows the MSVC build tools (WebView2 is already on Windows 11).
+
+```bash
 npm install
 npm run tauri dev      # the overlay, with hot reload
-npm run tauri build    # installers in target\release\bundle\
+npm run tauri build    # installers in target/release/bundle/
+npm run dev            # UI only, in any browser, with fake media and API data
 ```
 
-Preview just the UI in any browser, with fake media and API data (no Windows needed):
-
-```powershell
-npm run dev            # then open http://localhost:1420
-```
-
-Tests:
-
-```powershell
+```bash
 npm test               # validators, paths, tones, every file in examples/
 npm run test:core      # Rust safety rules
 npm run typecheck
 ```
+
+Tracked in Jira as DD-107 (research: DD-98).
 
 ## macOS
 
@@ -243,7 +245,7 @@ crates/perch-core/   platform-independent safety rules, unit-tested anywhere
 examples/            sample pills and avatars (all validated by the test suite)
 ```
 
-## Not in the MVP
+## Not yet
 
 * Obsidian pill (note create via `obsidian://` / vault files, note search)
 * Shuffle, repeat, volume and "add to library" controls
