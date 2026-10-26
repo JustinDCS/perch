@@ -385,6 +385,8 @@ input[type="checkbox"] {
   outline: none;
 }
 .list-title {
+  flex: 0 1 auto;
+  min-width: 0; /* lets a long title shrink and show the ellipsis instead of running off the card */
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
