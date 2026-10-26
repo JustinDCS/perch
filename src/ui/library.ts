@@ -40,6 +40,8 @@ function describe(pill: PillManifest): string {
       return "A list from a web service";
     case "approvals":
       return "Questions to answer";
+    case "chart":
+      return "A bar chart from a web service";
   }
 }
 

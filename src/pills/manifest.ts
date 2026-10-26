@@ -17,6 +17,7 @@ import type {
   ApprovalAction,
   ApprovalsDisplay,
   AuthSpec,
+  ChartDisplay,
   ListDisplay,
   PillManifest,
   PillVariable,
@@ -302,12 +303,12 @@ function validateThresholds(raw: unknown, errs: Errs): Threshold[] {
   return out;
 }
 
-function validateDisplay(raw: unknown, errs: Errs): StatDisplay | ListDisplay | ApprovalsDisplay | undefined {
+function validateDisplay(raw: unknown, errs: Errs): StatDisplay | ListDisplay | ApprovalsDisplay | ChartDisplay | undefined {
   if (!isRecord(raw)) {
     errs.push("display: must be an object");
     return undefined;
   }
-  const layout = oneOf(raw.layout, "display.layout", errs, ["stat", "list", "approvals"] as const);
+  const layout = oneOf(raw.layout, "display.layout", errs, ["stat", "list", "approvals", "chart"] as const);
 
   if (layout === "approvals") {
     noUnknownKeys(raw, ["layout", "items", "title", "detail", "actions", "limit"], "display", errs);
@@ -319,6 +320,22 @@ function validateDisplay(raw: unknown, errs: Errs): StatDisplay | ListDisplay | 
     if (!items || !title || actions.length === 0 || limit === undefined) return undefined;
     const display: ApprovalsDisplay = { layout, items, title, actions, limit };
     if (detail) display.detail = detail;
+    return display;
+  }
+
+  if (layout === "chart") {
+    noUnknownKeys(raw, ["layout", "values", "label", "unit", "period"], "display", errs);
+    const list = Array.isArray(raw.values) ? raw.values : [raw.values];
+    if (list.length < 1 || list.length > 4) errs.push("display.values: give one path, or up to four");
+    const values = list.map((v, i) => validatePath(v, `display.values[${i}]`, errs));
+    const label = has(raw, "label") ? str(raw.label, "display.label", errs, { max: 60 }) : undefined;
+    const unit = has(raw, "unit") ? str(raw.unit, "display.unit", errs, { min: 0, max: 12 }) : undefined;
+    const period = has(raw, "period") ? str(raw.period, "display.period", errs, { min: 0, max: 30 }) : undefined;
+    if (list.length < 1 || list.length > 4 || values.some((v) => v === undefined)) return undefined;
+    const display: ChartDisplay = { layout, values: values as string[] };
+    if (label !== undefined) display.label = label;
+    if (unit !== undefined) display.unit = unit;
+    if (period !== undefined) display.period = period;
     return display;
   }
 

@@ -173,6 +173,18 @@ function createMock(): Ipc {
         }),
       },
       {
+        name: "demo-commits.json",
+        content: JSON.stringify({
+          perch: 1,
+          id: "demo-commits",
+          name: "Commits",
+          kind: "rest",
+          refreshSeconds: 300,
+          request: { url: "https://mock.example.test/repos/x/y/stats/commit_activity" },
+          display: { layout: "chart", values: ["[50].days", "[51].days"], unit: "commits", period: "last 14 days", label: "Demo repo (sample data)" },
+        }),
+      },
+      {
         name: "demo-open-tickets.json",
         content: JSON.stringify({
           perch: 1,
@@ -248,6 +260,13 @@ function createMock(): Ipc {
       if (req.auth && !secrets.has(req.auth.secret)) throw `SECRET_MISSING:${req.auth.secret}`;
       const path = new URL(req.url).pathname;
       if (path.endsWith("/pending")) return { requests: pending };
+      if (path.endsWith("/stats/commit_activity")) {
+        const daily = [4, 7, 5, 6, 0, 2, 9, 8, 11, 7, 10, 3, 4, 9];
+        const weeks = Array.from({ length: 52 }, () => ({ days: [1, 2, 1, 3, 2, 0, 0] }));
+        weeks[50] = { days: daily.slice(0, 7) };
+        weeks[51] = { days: daily.slice(7) };
+        return weeks;
+      }
       const answer = /\/requests\/([^/]+)\/(approve|reject)$/.exec(path);
       if (answer) {
         // the first approve fails once so the failed card can be seen

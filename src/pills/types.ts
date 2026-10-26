@@ -39,6 +39,16 @@ export interface StatDisplay {
   thresholds: Threshold[];
 }
 
+/** A bar per number, e.g. commits per day. `values` are paths to number arrays, joined in order. */
+export interface ChartDisplay {
+  layout: "chart";
+  values: string[];
+  label?: string;
+  unit?: string;
+  /** small caption next to the total, e.g. "last 14 days" */
+  period?: string;
+}
+
 export interface ListDisplay {
   layout: "list";
   items: string;
@@ -81,7 +91,7 @@ export interface RestPill {
   refreshSeconds: number;
   variables?: PillVariable[];
   request: RestRequest;
-  display: StatDisplay | ListDisplay | ApprovalsDisplay;
+  display: StatDisplay | ListDisplay | ApprovalsDisplay | ChartDisplay;
 }
 
 export interface NowPlayingPill {

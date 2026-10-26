@@ -123,3 +123,22 @@ describe("approvals display", () => {
     expect(validatePill(approvals([{ label: "Go", post: "https://x.example.com/a", method: "DELETE" }])).ok).toBe(false);
   });
 });
+
+describe("chart layout", () => {
+  const chart = (display: unknown) =>
+    validatePill({ perch: 1, id: "c", name: "C", kind: "rest", refreshSeconds: 60, request: { url: "https://api.example.com/x" }, display });
+
+  it("accepts one path or several and keeps them in order", () => {
+    const one = chart({ layout: "chart", values: "a.b" });
+    expect(one.ok && one.value.kind === "rest" && one.value.display.layout === "chart" && one.value.display.values).toEqual(["a.b"]);
+    const two = chart({ layout: "chart", values: ["[50].days", "[51].days"], unit: "commits" });
+    expect(two.ok).toBe(true);
+  });
+
+  it("refuses no paths, too many, bad paths and unknown keys", () => {
+    expect(chart({ layout: "chart", values: [] }).ok).toBe(false);
+    expect(chart({ layout: "chart", values: ["a", "b", "c", "d", "e"] }).ok).toBe(false);
+    expect(chart({ layout: "chart", values: ["a.__proto__"] }).ok).toBe(false);
+    expect(chart({ layout: "chart", values: "a", colour: "red" }).ok).toBe(false);
+  });
+});

@@ -88,7 +88,7 @@ describe("validatePill: rest", () => {
 
   it("validates paths in display mappings", () => {
     expect(errorsOf(rest({ display: { layout: "stat", value: "a.__proto__" } })).join()).toContain("not a valid path");
-    expect(errorsOf(rest({ display: { layout: "chart", value: "a" } })).join()).toContain("display.layout");
+    expect(errorsOf(rest({ display: { layout: "gauge", value: "a" } })).join()).toContain("display.layout");
   });
 
   it("validates list displays", () => {

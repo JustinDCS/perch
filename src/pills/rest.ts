@@ -7,7 +7,7 @@ import { clear, h } from "../ui/dom";
 import { hostOf } from "./manifest";
 import { toneFor } from "./tone";
 import { fillBody, fillText, fillUrl, missingVars } from "./variables";
-import type { ApprovalAction, ApprovalsDisplay, ListDisplay, PillHost, PillView, RestPill, StatDisplay, Tone } from "./types";
+import type { ApprovalAction, ApprovalsDisplay, ChartDisplay, ListDisplay, PillHost, PillView, RestPill, StatDisplay, Tone } from "./types";
 
 export function createRestPill(manifest: RestPill, host: PillHost): PillView {
   const content = h("div", { class: "pill-content" });
@@ -77,6 +77,37 @@ export function createRestPill(manifest: RestPill, host: PillHost): PillView {
     if (display.label) content.append(h("div", { class: "stat-label", text: display.label }));
     setTone(toneFor(raw, display.thresholds));
     host.reportChip(manifest.id, { icon: manifest.icon, text: `${formatValue(raw)}${display.unit ? ` ${display.unit}` : ""}` });
+  }
+
+  function renderChart(display: ChartDisplay, data: unknown): void {
+    const numbers: number[] = [];
+    for (const path of display.values) {
+      const found = getPath(data, path);
+      if (Array.isArray(found)) for (const n of found) if (typeof n === "number" && Number.isFinite(n)) numbers.push(Math.max(0, n));
+    }
+    clear(content);
+    setTone("neutral");
+    if (numbers.length === 0) {
+      // some APIs (GitHub's statistics) answer with nothing the first time while they work it out
+      content.append(h("div", { class: "list-empty", text: "Collecting data, check back in a minute" }));
+      host.reportChip(manifest.id, null);
+      return;
+    }
+    const total = numbers.reduce((a, b) => a + b, 0);
+    const max = Math.max(...numbers, 1);
+    const head = h("div", { class: "stat-value" }, formatValue(total));
+    if (display.unit) head.append(h("span", { class: "stat-unit", text: ` ${display.unit}` }));
+    if (display.period) head.append(h("span", { class: "chart-period", text: ` ${display.period}` }));
+    const bars = h("div", { class: "chart", attrs: { role: "img", "aria-label": `${display.label ?? "Chart"}: ${numbers.join(", ")}` } });
+    numbers.forEach((n, i) => {
+      const bar = h("span", { class: i === numbers.length - 1 ? "chart-bar now" : "chart-bar" });
+      bar.style.height = `${Math.max(5, Math.round((n / max) * 100))}%`;
+      bar.title = String(n);
+      bars.append(bar);
+    });
+    content.append(head, bars);
+    if (display.label) content.append(h("div", { class: "stat-label", text: display.label }));
+    host.reportChip(manifest.id, { icon: manifest.icon, text: `${formatValue(total)}${display.unit ? ` ${display.unit}` : ""}` });
   }
 
   function renderList(display: ListDisplay, data: unknown): void {
@@ -371,6 +402,7 @@ export function createRestPill(manifest: RestPill, host: PillHost): PillView {
       recordResult(`OK: ${previewJson(data)}`);
       if (manifest.display.layout === "stat") renderStat(manifest.display, data);
       else if (manifest.display.layout === "approvals") renderApprovals(manifest.display, data);
+      else if (manifest.display.layout === "chart") renderChart(manifest.display, data);
       else renderList(manifest.display, data);
     } catch (err) {
       handleError(err instanceof Error ? err.message : err);
