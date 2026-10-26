@@ -205,3 +205,29 @@ export function setSoundVolume(volume: number): void {
     // ignore
   }
 }
+
+// ---- which pills show a chip in the small view --------------------------------------------------
+
+const HIDDEN_CHIPS_KEY = "perch.hiddenChips";
+
+/** Pills the user does not want as a chip in the small view (they still show when open). */
+export function getHiddenChips(): Set<string> {
+  try {
+    const raw = localStorage.getItem(HIDDEN_CHIPS_KEY);
+    const parsed: unknown = raw ? JSON.parse(raw) : [];
+    return new Set(Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === "string") : []);
+  } catch {
+    return new Set();
+  }
+}
+
+export function setChipShown(id: string, shown: boolean): void {
+  const hidden = getHiddenChips();
+  if (shown) hidden.delete(id);
+  else hidden.add(id);
+  try {
+    localStorage.setItem(HIDDEN_CHIPS_KEY, JSON.stringify([...hidden]));
+  } catch {
+    // ignore
+  }
+}

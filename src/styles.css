@@ -775,3 +775,11 @@ input[type="checkbox"] {
     animation-timing-function: steps(10, end);
   }
 }
+
+/* a pill's second setting, tucked under its name */
+.pill-setting .row.sub {
+  padding-top: 0;
+  margin-left: 26px;
+  font-size: 12px;
+  color: var(--muted);
+}

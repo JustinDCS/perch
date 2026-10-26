@@ -3,7 +3,7 @@ import { type Config } from "../config";
 import { errorText, ipc } from "../ipc";
 import { secretsOf } from "../pills/manifest";
 import { SOUND_MODES, type SoundMode } from "../sound/sounds";
-import { GAZE_MODES, getDisabledPills, OPEN_DELAYS, type GazeMode } from "../settings";
+import { GAZE_MODES, getDisabledPills, getHiddenChips, OPEN_DELAYS, type GazeMode } from "../settings";
 import { clear, h } from "./dom";
 
 const MAX_IMPORT_BYTES = 256 * 1024;
@@ -13,6 +13,8 @@ export interface SettingsContext {
   avatarFile: string | null;
   onAvatarChange(file: string | null): void;
   onPillToggle(id: string, enabled: boolean): void;
+  /** Show or hide this pill as a chip in the small view. */
+  onChipToggle(id: string, shown: boolean): void;
   hideWhenQuiet: boolean;
   onHideWhenQuietChange(value: boolean): void;
   soundMode: SoundMode;
@@ -74,11 +76,20 @@ export function renderSettings(ctx: SettingsContext): HTMLElement {
 
   // ---- pills -----------------------------------------------------------------------------
   const disabled = getDisabledPills();
+  const hiddenChips = getHiddenChips();
   const pillRows = ctx.config.pills.map((pill) => {
     const box = h("input", { type: "checkbox", attrs: { "aria-label": `Show ${pill.name}` } });
     box.checked = !disabled.has(pill.id);
     box.addEventListener("change", () => ctx.onPillToggle(pill.id, box.checked));
-    return h("label", { class: "row" }, box, h("span", { class: "row-main", text: pill.name }), h("span", { class: "row-meta", text: pill.kind }));
+    const chipBox = h("input", { type: "checkbox", attrs: { "aria-label": `Show ${pill.name} in the small view` } });
+    chipBox.checked = !hiddenChips.has(pill.id);
+    chipBox.addEventListener("change", () => ctx.onChipToggle(pill.id, chipBox.checked));
+    return h(
+      "div",
+      { class: "pill-setting" },
+      h("label", { class: "row" }, box, h("span", { class: "row-main", text: pill.name }), h("span", { class: "row-meta", text: pill.kind })),
+      h("label", { class: "row sub" }, chipBox, h("span", { class: "row-main", text: "Show in the small view" })),
+    );
   });
 
   // ---- secrets ---------------------------------------------------------------------------

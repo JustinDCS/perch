@@ -23,6 +23,7 @@ import {
   getAvatarFile,
   getDisabledPills,
   getGazeMode,
+  getHiddenChips,
   getHideWhenQuiet,
   getOpenDelay,
   getPeeks,
@@ -30,6 +31,7 @@ import {
   getSoundMode,
   getSoundVolume,
   setAvatarFile,
+  setChipShown,
   setGazeMode,
   setHideWhenQuiet,
   setOpenDelay,
@@ -42,6 +44,7 @@ import {
 import { clear, h } from "./dom";
 import { icon } from "./icons";
 import { confirmDialog } from "./modal";
+import { visibleChips } from "./chips";
 import { fracForCentre, monitorAt, monitorKey, resolvePlacement, windowOrigin, type MonitorBox } from "./placement";
 import { renderSettings } from "./settings";
 
@@ -185,7 +188,16 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     const worst = worstTone();
     const active = musicPlaying || TONE_RANK[worst] >= TONE_RANK.warn;
     if (hideWhenQuiet && !active) return "hidden";
-    return chips.size > 0 ? "small" : hideWhenQuiet ? "hidden" : "small";
+    return shownChips().length > 0 ? "small" : hideWhenQuiet ? "hidden" : "small";
+  }
+
+  function shownChips(): [string, Chip][] {
+    return visibleChips(
+      config.pills.map((p) => p.id),
+      chips,
+      tones,
+      getHiddenChips(),
+    );
   }
 
   function currentMode(): Mode {
@@ -247,12 +259,10 @@ export async function mountApp(root: HTMLElement): Promise<void> {
 
   function paintChips(): void {
     clear(chipRow);
-    const order = config.pills.map((p) => p.id);
     const accents = new Map(config.pills.map((p) => [p.id, p.accent] as const));
     const kinds = new Map(config.pills.map((p) => [p.id, p.kind] as const));
-    for (const id of order) {
-      const chip = chips.get(id);
-      if (!chip) continue;
+    const shown = shownChips();
+    for (const [id, chip] of shown) {
       const el = h(
         "span",
         { class: "chip", data: { tone: tones.get(id) ?? "neutral", kind: kinds.get(id) ?? "rest" } },
@@ -263,7 +273,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
       if (accent) el.style.setProperty("--pill-accent", accent);
       chipRow.append(el);
     }
-    if (chips.size === 0) chipRow.append(h("span", { class: "chip chip-quiet" }, h("span", { class: "chip-text", text: "All quiet" })));
+    if (shown.length === 0) chipRow.append(h("span", { class: "chip chip-quiet" }, h("span", { class: "chip-text", text: "All quiet" })));
   }
 
   function refresh(): void {
@@ -475,6 +485,10 @@ export async function mountApp(root: HTMLElement): Promise<void> {
           renderAvatar();
         },
         onPillToggle: setPillEnabled,
+        onChipToggle(id, shown) {
+          setChipShown(id, shown);
+          refresh();
+        },
         hideWhenQuiet,
         onHideWhenQuietChange(value) {
           hideWhenQuiet = value;
