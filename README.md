@@ -25,7 +25,7 @@ Verified so far, on Linux and in a headless browser: the safety rules in Rust (`
 all manifest / avatar / path validation (`npm test`), the type-check, the production build, and the UI
 flows (approval prompt, thresholds driving the avatar, avatar import) against a built-in mock.
 
-**Not yet verified:** seek dragging, Apple Music / browser sources, REST pills with a secret (the Jira examples), row links, and the tray menu items.
+**Not yet verified:** seek dragging, Apple Music / browser sources, and the tray menu items (Show / hide, Open Library, Centre on this screen, Open config folder, Quit). REST pills with a secret, variables and row links are verified with the Jira examples.
 
 ## Run it
 

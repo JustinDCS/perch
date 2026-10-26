@@ -8,7 +8,7 @@ use std::fs;
 
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::{AppHandle, Manager, PhysicalPosition};
+use tauri::{AppHandle, Emitter, Manager, PhysicalPosition};
 
 use state::AppState;
 
@@ -20,6 +20,14 @@ fn toggle_main_window(app: &AppHandle) {
             let _ = window.show();
         }
     }
+}
+
+/// Show the overlay (it may be hidden from the tray) and tell the page what the user picked.
+fn tell_page(app: &AppHandle, action: &str) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.show();
+    }
+    let _ = app.emit("tray", action);
 }
 
 /// Park the overlay at the top centre of the primary monitor, like a notch.
@@ -47,9 +55,11 @@ pub fn run() {
             place_at_top_centre(app.handle());
 
             let toggle = MenuItem::with_id(app, "toggle", "Show / hide Perch", true, None::<&str>)?;
+            let library = MenuItem::with_id(app, "library", "Open Library", true, None::<&str>)?;
+            let centre = MenuItem::with_id(app, "centre", "Centre on this screen", true, None::<&str>)?;
             let folder = MenuItem::with_id(app, "folder", "Open config folder", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "Quit Perch", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&toggle, &folder, &quit])?;
+            let menu = Menu::with_items(app, &[&toggle, &library, &centre, &folder, &quit])?;
 
             TrayIconBuilder::new()
                 .icon(app.default_window_icon().cloned().ok_or("missing app icon")?)
@@ -58,6 +68,7 @@ pub fn run() {
                 .show_menu_on_left_click(false)
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "toggle" => toggle_main_window(app),
+                    "library" | "centre" => tell_page(app, event.id.as_ref()),
                     "folder" => {
                         let state = app.state::<AppState>();
                         let _ = files::open_config_dir(state);

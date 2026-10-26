@@ -8,6 +8,7 @@ import {
   primaryMonitor,
   type Monitor,
 } from "@tauri-apps/api/window";
+import { listen } from "@tauri-apps/api/event";
 import { createView } from "../avatar/any";
 import { nextPeekDelay } from "../avatar/life";
 import type { AvatarView } from "../avatar/renderer";
@@ -541,11 +542,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
           openDelay = ms;
           setOpenDelay(ms);
         },
-        onResetPosition() {
-          setPlacement(null);
-          lastSize = "";
-          void fitWindow();
-        },
+        onResetPosition: resetPosition,
         async onReload() {
           config = await loadConfig();
           renderAvatar();
@@ -557,6 +554,12 @@ export async function mountApp(root: HTMLElement): Promise<void> {
       }),
     );
     refresh();
+  }
+
+  function resetPosition(): void {
+    setPlacement(null);
+    lastSize = "";
+    void fitWindow();
   }
 
   // ---- opening: rest the pointer on it for a moment (a ring shows the wait), or click ---------
@@ -704,6 +707,18 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && view === "settings" && !document.querySelector(".modal-backdrop")) showPills();
   });
+
+  // the tray menu (Rust) tells the page what was picked
+  if (inTauri) {
+    void listen<string>("tray", (event) => {
+      if (event.payload === "library") {
+        wake();
+        showSettings();
+      } else if (event.payload === "centre") {
+        resetPosition();
+      }
+    });
+  }
 
   renderAvatar();
   showPills();
