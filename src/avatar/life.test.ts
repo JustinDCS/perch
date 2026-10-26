@@ -234,3 +234,51 @@ describe("nextPeekDelay", () => {
     expect(nextPeekDelay(() => 0.999999)).toBeLessThan(110_000);
   });
 });
+
+import { groove, nextDanceDelay, pickNext } from "./life";
+
+describe("groove", () => {
+  it("stays small and bounded, and keeps moving", () => {
+    let lowest = 0;
+    let highest = -9;
+    for (let s = 0; s < 120; s += 0.05) {
+      const g = groove(s);
+      expect(g.dy).toBeLessThanOrEqual(0);
+      expect(g.dy).toBeGreaterThanOrEqual(-1.61);
+      expect(Math.abs(g.roll)).toBeLessThanOrEqual(3.21);
+      expect(g.sy).toBeGreaterThanOrEqual(1);
+      expect(g.sy).toBeLessThanOrEqual(1.026);
+      expect(g.sx).toBeLessThanOrEqual(1);
+      lowest = Math.min(lowest, g.dy);
+      highest = Math.max(highest, g.roll);
+    }
+    expect(lowest).toBeLessThan(-1.4);
+    expect(highest).toBeGreaterThan(2);
+  });
+});
+
+describe("pickNext", () => {
+  it("never repeats the current dance when there is another", () => {
+    const rand = seeded(11);
+    let current: string | undefined = "a";
+    const seen = new Set<string>();
+    for (let i = 0; i < 200; i++) {
+      const next = pickNext(["a", "b", "c", "d"], current, rand);
+      expect(next).not.toBe(current);
+      seen.add(next!);
+      current = next;
+    }
+    expect(seen.size).toBe(4);
+  });
+  it("copes with a pool of one and an empty pool", () => {
+    expect(pickNext(["a"], "a")).toBe("a");
+    expect(pickNext([], undefined)).toBeUndefined();
+  });
+});
+
+describe("nextDanceDelay", () => {
+  it("is between 7 and 16 seconds", () => {
+    expect(nextDanceDelay(() => 0)).toBe(7000);
+    expect(nextDanceDelay(() => 0.9999)).toBeLessThan(16000);
+  });
+});

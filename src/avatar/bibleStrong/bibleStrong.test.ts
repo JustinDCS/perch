@@ -122,6 +122,7 @@ describe("playback maths", () => {
 });
 
 import { DEFAULT_AVATAR_DEFINITION, DEFAULT_BS_AVATAR } from "./defaultAvatar";
+import { pickAnimations } from "./pose";
 
 describe("built-in avatar", () => {
   it("is a valid Bible Strong definition with an animation for every Perch state", () => {
@@ -131,5 +132,19 @@ describe("built-in avatar", () => {
       expect(pickAnimation(DEFAULT_BS_AVATAR.animations, DEFAULT_BS_AVATAR.animationOrder, state)).toBeDefined();
     }
     expect(pickAnimation(DEFAULT_BS_AVATAR.animations, DEFAULT_BS_AVATAR.animationOrder, "asleep")).toBe("sleeping");
+  });
+
+  it("has several different dances for music, each using expressions that exist", () => {
+    const dances = pickAnimations(DEFAULT_BS_AVATAR.animations, DEFAULT_BS_AVATAR.animationOrder, "music");
+    expect(dances.length).toBeGreaterThanOrEqual(4);
+    for (const name of dances) {
+      for (const step of DEFAULT_BS_AVATAR.animations[name]!.steps) expect(DEFAULT_BS_AVATAR.expressions).toHaveProperty(step.expression);
+    }
+  });
+
+  it("falls back to the first animation for avatars without dances", () => {
+    const animations = sample().animations as Record<string, BsAnimation>;
+    expect(pickAnimations(animations, ["idle", "happy"], "music")).toEqual(["happy"]);
+    expect(pickAnimations({}, [], "music")).toEqual([]);
   });
 });

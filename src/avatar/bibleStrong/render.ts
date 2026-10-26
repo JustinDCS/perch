@@ -2,9 +2,9 @@
 // 2D approximation: the Studio draws a lit 3D shape, here the head turn is shown by sliding
 // and squeezing the face across the body, which reads well at 48 pixels.
 
-import { BlinkPlanner, Gaze, NEUTRAL_IMPULSE, Reactions, breath, interestFor, noise, type Impulse } from "../life";
+import { BlinkPlanner, Gaze, NEUTRAL_IMPULSE, Reactions, breath, groove, interestFor, nextDanceDelay, noise, pickNext, type Impulse } from "../life";
 import type { AvatarView, ViewState } from "../renderer";
-import { ease, locate, mixPose, pickAnimation, poseOf, type Pose } from "./pose";
+import { ease, locate, mixPose, pickAnimations, poseOf, type Pose } from "./pose";
 import type { BsAnimation, BsAvatar, BsSurface } from "./schema";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -126,6 +126,10 @@ export function createBibleStrongView(avatar: BsAvatar): AvatarView {
   const gaze = new Gaze();
   const reactions = new Reactions();
   let stateName: ViewState = "idle";
+  // while music plays it moves between the avatar's different dances every so often
+  let dancePool: string[] = [];
+  let danceName: string | undefined;
+  let danceChangeAt = Infinity;
   // the scripted loops run on their own clock, which speeds up and slows down a little
   let clock = 0;
   let lastDraw = 0;
@@ -165,6 +169,18 @@ export function createBibleStrongView(avatar: BsAvatar): AvatarView {
     const dt = lastDraw === 0 ? 16 : Math.min(100, now - lastDraw);
     lastDraw = now;
     if (!reduceMotion) clock += dt * (1 + 0.08 * noise(now / 1000 * 0.12, 3));
+    if (!reduceMotion && now >= danceChangeAt) {
+      const next = pickNext(dancePool, danceName);
+      danceChangeAt = now + nextDanceDelay();
+      if (next && next !== danceName) {
+        blendFrom = shown;
+        blendStart = now;
+        danceName = next;
+        animation = avatar.animations[next];
+        clock = 0;
+        nextBlink(now, false);
+      }
+    }
     let pose: Pose;
     let eyeMotion = "none";
     let bodyMotion = "none";
@@ -232,19 +248,22 @@ export function createBibleStrongView(avatar: BsAvatar): AvatarView {
     const faceY = -pitch * faceRadius * 0.6 + eyeJitterY + (look.y * 0.34 + noise(sec * 0.3, 17) * 0.05 * drift) * faceRadius;
     const squash = Math.max(0.55, Math.cos(rad(pose.headY))) * (1 - 0.18 * Math.abs(look.x));
     const breathing = reduceMotion ? { sx: 1, sy: 1 } : breath(sec, stateName === "asleep");
+    const dance = reduceMotion || stateName !== "music" ? null : groove(sec);
     const react: Impulse = reduceMotion ? NEUTRAL_IMPULSE : reactions.sample(now);
-    const rise = { sx: breathing.sx * react.sx, sy: breathing.sy * react.sy };
+    const rise = { sx: breathing.sx * react.sx * (dance?.sx ?? 1), sy: breathing.sy * react.sy * (dance?.sy ?? 1) };
+    const lift = react.dy + (dance?.dy ?? 0);
+    const tilt = react.roll + (dance?.roll ?? 0);
     const half = (pose.spacing * s * squash) / 2;
 
-    const key = [rise.sy, rise.sx, react.dy, react.eyeScale, react.openLeft, react.openRight, react.roll, look.x, look.y, pose.bodyColor, pose.eyeColor, faceX, faceY, half, pose.headZ, closed, bodyX, bodyY, pose.left.height, pose.right.height, pose.left.angle, pose.right.angle]
+    const key = [rise.sy, rise.sx, lift, react.eyeScale, react.openLeft, react.openRight, tilt, look.x, look.y, pose.bodyColor, pose.eyeColor, faceX, faceY, half, pose.headZ, closed, bodyX, bodyY, pose.left.height, pose.right.height, pose.left.angle, pose.right.angle]
       .map((v) => (typeof v === "number" ? v.toFixed(2) : v))
       .join("|");
     if (key === lastKey) return;
     lastKey = key;
 
     // breathing grows the body upwards from its base
-    character.setAttribute("transform", `translate(50 ${num(88 + react.dy)}) scale(${num(rise.sx)} ${num(rise.sy)}) translate(-50 -88)`);
-    faceGroup.setAttribute("transform", `translate(${num(50 + bodyX)} ${num(50 + bodyY)}) rotate(${num(pose.headZ * 0.6 + look.x * 3 + react.roll)})`);
+    character.setAttribute("transform", `translate(50 ${num(88 + lift)}) scale(${num(rise.sx)} ${num(rise.sy)}) translate(-50 -88)`);
+    faceGroup.setAttribute("transform", `translate(${num(50 + bodyX)} ${num(50 + bodyY)}) rotate(${num(pose.headZ * 0.6 + look.x * 3 + tilt)})`);
     bodyGroup.setAttribute("transform", `translate(${num(50 + bodyX)} ${num(50 + bodyY)})`);
     for (const shape of bodyShapes) {
       shape.setAttribute("fill", pose.bodyColor ?? base.body);
@@ -264,7 +283,12 @@ export function createBibleStrongView(avatar: BsAvatar): AvatarView {
   }
 
   function setState(name: ViewState): void {
-    const picked = pickAnimation(avatar.animations, avatar.animationOrder, name);
+    dancePool = name === "music" ? pickAnimations(avatar.animations, avatar.animationOrder, name) : [];
+    const options = pickAnimations(avatar.animations, avatar.animationOrder, name);
+    // start on a different dance each time the music starts
+    const picked = dancePool.length > 1 ? pickNext(dancePool, danceName) : options[0];
+    danceName = picked;
+    danceChangeAt = dancePool.length > 1 ? performance.now() + nextDanceDelay() : Infinity;
     animation = picked ? avatar.animations[picked] : undefined;
     stateName = name;
     startedAt = performance.now();

@@ -256,3 +256,45 @@ export class Reactions {
 export function nextPeekDelay(rand: Rand = Math.random): number {
   return 40_000 + rand() * 70_000;
 }
+
+// ---- dancing -----------------------------------------------------------------------------------
+
+export interface Groove {
+  /** lift in avatar units (negative is up) */
+  dy: number;
+  /** head tilt in degrees */
+  roll: number;
+  sx: number;
+  sy: number;
+}
+
+/**
+ * A relaxed bounce and sway for while music plays. The tempo drifts between about 1.6 and 2.3
+ * beats a second and the sway is a different length from the bounce, so it never settles into a
+ * loop. We do not know the song's real tempo, so this only has to feel in the mood.
+ */
+export function groove(seconds: number): Groove {
+  const tempo = 1.95 + noise(seconds * 0.05, 21) * 0.35;
+  // integrate the wandering tempo approximately: phase = tempo * time is close enough at this scale
+  const beat = seconds * tempo * Math.PI * 2;
+  const bounce = Math.abs(Math.sin(beat / 2)); // 0..1, one hop per beat
+  const sway = Math.sin(beat / 4 + noise(seconds * 0.08, 33));
+  return {
+    dy: -1.6 * bounce,
+    roll: 3.2 * sway,
+    sy: 1 + 0.025 * (1 - bounce),
+    sx: 1 - 0.012 * (1 - bounce),
+  };
+}
+
+/** The next dance to try: anything from the pool except the one that just finished. */
+export function pickNext(pool: readonly string[], current: string | undefined, rand: Rand = Math.random): string | undefined {
+  const others = pool.filter((n) => n !== current);
+  const from = others.length > 0 ? others : pool;
+  return from.length === 0 ? undefined : from[Math.min(from.length - 1, Math.floor(rand() * from.length))];
+}
+
+/** Milliseconds before it switches to a different dance. */
+export function nextDanceDelay(rand: Rand = Math.random): number {
+  return 7000 + rand() * 9000;
+}

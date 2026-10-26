@@ -141,6 +141,18 @@ export const STATE_ANIMATIONS = {
   asleep: ["sleeping", "drowsy", "bored"],
 } as const;
 
+/** Every animation the avatar has for a state, in preference order (or its first one as a fallback). */
+export function pickAnimations(
+  animations: Record<string, BsAnimation>,
+  order: readonly string[],
+  state: keyof typeof STATE_ANIMATIONS,
+): string[] {
+  const found = STATE_ANIMATIONS[state].filter((n) => n in animations);
+  if (found.length > 0) return found;
+  const fallback = order.find((n) => n in animations);
+  return fallback ? [fallback] : [];
+}
+
 export function pickAnimation(
   animations: Record<string, BsAnimation>,
   order: readonly string[],
