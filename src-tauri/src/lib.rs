@@ -44,6 +44,20 @@ fn place_at_top_centre(app: &AppHandle) {
     let _ = window.set_position(PhysicalPosition::new(x, y));
 }
 
+/// Windows quietly drops an overlay's "always on top" when another topmost or full-screen window
+/// takes over, leaving Perch behind other windows while still "visible". Re-assert it every few
+/// seconds; it never shows a window the user hid from the tray.
+fn keep_on_top(app: AppHandle) {
+    std::thread::spawn(move || loop {
+        std::thread::sleep(std::time::Duration::from_secs(3));
+        if let Some(window) = app.get_webview_window("main") {
+            if window.is_visible().unwrap_or(false) {
+                let _ = window.set_always_on_top(true);
+            }
+        }
+    });
+}
+
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
@@ -59,6 +73,8 @@ pub fn run() {
 
             inbox::autostart(app.handle());
             place_at_top_centre(app.handle());
+
+            keep_on_top(app.handle().clone());
 
             let toggle = MenuItem::with_id(app, "toggle", "Show / hide Perch", true, None::<&str>)?;
             let library = MenuItem::with_id(app, "library", "Open Library", true, None::<&str>)?;
