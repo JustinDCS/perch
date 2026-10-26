@@ -1,6 +1,6 @@
 # Perch
 
-A small always-on-top desktop companion for Windows. It sits at the top of your screen with an
+A small always-on-top desktop companion for Windows and macOS. It sits at the top of your screen with an
 avatar and a stack of **pills**: little cards that show what you want to glance at, like the song
 that is playing or a number from one of your APIs.
 
@@ -26,6 +26,17 @@ all manifest / avatar / path validation (`npm test`), the type-check, the produc
 flows (approval prompt, thresholds driving the avatar, avatar import) against a built-in mock.
 
 **Not yet verified:** approval cards on Windows (they work in the browser mock), seek dragging, Apple Music / browser sources, and the tray menu items (Show / hide, Open Library, Centre on this screen, Open config folder, Quit). REST pills with a secret, variables and row links are verified with the Jira examples.
+
+## Trying a test build
+
+1. Download the installer from the repository's **Releases** page (`.exe` or `.msi` for Windows, `.dmg` for Mac). The repository is private, so you need to be added to it first.
+2. **Windows:** SmartScreen may say "unknown publisher" because the build is not signed. Choose **More info → Run anyway**.
+3. **Mac:** see [macOS](#macos) (right-click → Open the first time).
+4. Perch sits at the top of the screen; use the tray / menu bar icon for Show / hide, Library and Quit. Settings has the pill Library and the avatar picker.
+
+**Known issues in test builds:** dragging the progress bar to seek, the local inbox and approval cards have only been tried in a browser mock, not on a real PC; on a Mac only Spotify and Apple Music are read; builds are unsigned and there is no auto-update (install the next build over the top).
+
+**Feedback:** send what you did, what you expected and what happened to Justin, with a screenshot if you can. Settings → Problems lists the last errors; copy them in.
 
 ## Run it
 
@@ -236,10 +247,8 @@ examples/            sample pills and avatars (all validated by the test suite)
 
 * Obsidian pill (note create via `obsidian://` / vault files, note search)
 * Shuffle, repeat, volume and "add to library" controls
-* Button actions on pills (re-run, redeploy) with confirmation
 * Avatar configurator, extra avatar parts
-* Agent approvals from the overlay (hook to socket), as in Coucou
-* Signed installer and auto-update for non-developer users
+* Signed and notarised installers, and auto-update
 
 ## Licence
 

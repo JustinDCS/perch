@@ -1,0 +1,42 @@
+name: release
+
+# Push a tag like v0.1.0 to build both installers and attach them to a draft release.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: Windows, os: windows-latest, args: "", targets: "" }
+          - { name: macOS, os: macos-latest, args: "--target universal-apple-darwin", targets: "aarch64-apple-darwin,x86_64-apple-darwin" }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.targets }}
+      - uses: Swatinem/rust-cache@v2
+      - run: npm ci
+      - run: npm test
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: Perch ${{ github.ref_name }} (test build)
+          releaseBody: "Test build for friends and family. Not signed: see the README for how to open it. Report problems with the Feedback steps in the README."
+          releaseDraft: true
+          prerelease: true
+          args: ${{ matrix.args }}
