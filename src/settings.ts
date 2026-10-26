@@ -115,3 +115,30 @@ export function setOpenDelay(ms: number): void {
     // ignore
   }
 }
+
+// ---- when the avatar's eyes follow the pointer ------------------------------------------------
+
+export type GazeMode = "open" | "always" | "never";
+export const GAZE_MODES: { mode: GazeMode; label: string }[] = [
+  { mode: "open", label: "Only when it is open" },
+  { mode: "always", label: "Always" },
+  { mode: "never", label: "Never" },
+];
+const GAZE_KEY = "perch.gazeMode";
+
+export function getGazeMode(): GazeMode {
+  try {
+    const value = localStorage.getItem(GAZE_KEY);
+    return GAZE_MODES.some((g) => g.mode === value) ? (value as GazeMode) : "open";
+  } catch {
+    return "open";
+  }
+}
+
+export function setGazeMode(mode: GazeMode): void {
+  try {
+    localStorage.setItem(GAZE_KEY, mode);
+  } catch {
+    // ignore
+  }
+}

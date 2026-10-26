@@ -79,7 +79,7 @@ Each pill file may set an `"accent": "#rrggbb"` colour for its chip and card.
 
 ## Life
 
-The scripted poses sit under a small "alive" layer (`src/avatar/life.ts`): the eyes follow the pointer anywhere on screen and wander when nobody is there, the body breathes, blinks are irregular (the odd double or slow one), and each loop runs on a slightly varying clock so it never repeats in lockstep. It ignores the pointer while asleep and is switched off by the system's reduced-motion setting.
+The scripted poses sit under a small "alive" layer (`src/avatar/life.ts`): the eyes follow the pointer anywhere on screen while the island is open (Library → Behaviour: always or never) and wander when nobody is there, the body breathes, blinks are irregular (the odd double or slow one), and each loop runs on a slightly varying clock so it never repeats in lockstep. It ignores the pointer while asleep and is switched off by the system's reduced-motion setting.
 
 ## Pill manifest
 

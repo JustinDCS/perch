@@ -19,10 +19,12 @@ import type { Chip, PillHost, PillManifest, PillView, Tone } from "../pills/type
 import {
   getAvatarFile,
   getDisabledPills,
+  getGazeMode,
   getHideWhenQuiet,
   getOpenDelay,
   getPlacement,
   setAvatarFile,
+  setGazeMode,
   setHideWhenQuiet,
   setOpenDelay,
   setPillEnabled,
@@ -60,6 +62,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   let leaveTimer: ReturnType<typeof setTimeout> | undefined;
   let openDelay = getOpenDelay();
   let dragging = false;
+  let gazeMode = getGazeMode();
 
   // ---- layout ------------------------------------------------------------------------------
   const avatarSlot = h("div", { class: "avatar-slot" });
@@ -243,6 +246,12 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   let gazeBusy = false;
   async function trackPointer(): Promise<void> {
     if (gazeBusy || document.hidden || !avatarView) return;
+    // by default the eyes only follow the pointer while the island is open
+    if (gazeMode === "never" || (gazeMode === "open" && island.dataset.mode !== "home")) {
+      if (lastCursor !== "") avatarView.lookAway();
+      lastCursor = "";
+      return;
+    }
     gazeBusy = true;
     try {
       const [cursor, position] = await Promise.all([cursorPosition(), getCurrentWindow().outerPosition()]);
@@ -265,6 +274,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   } else {
     // in a plain browser (development) the pointer is only known while it is over the page
     document.addEventListener("pointermove", (event) => {
+      if (gazeMode === "never" || (gazeMode === "open" && island.dataset.mode !== "home")) return;
       const box = perch.getBoundingClientRect();
       avatarView?.lookAt(
         (event.clientX - (box.left + box.width / 2)) / GAZE_RANGE_PX,
@@ -369,6 +379,11 @@ export async function mountApp(root: HTMLElement): Promise<void> {
         onHideWhenQuietChange(value) {
           hideWhenQuiet = value;
           setHideWhenQuiet(value);
+        },
+        gazeMode,
+        onGazeModeChange(mode) {
+          gazeMode = mode;
+          setGazeMode(mode);
         },
         openDelayMs: openDelay,
         onOpenDelayChange(ms) {

@@ -2,7 +2,7 @@ import { avatarName, validateAnyAvatar } from "../avatar/any";
 import { type Config } from "../config";
 import { errorText, ipc } from "../ipc";
 import { secretsOf } from "../pills/manifest";
-import { getDisabledPills, OPEN_DELAYS } from "../settings";
+import { GAZE_MODES, getDisabledPills, OPEN_DELAYS, type GazeMode } from "../settings";
 import { clear, h } from "./dom";
 
 const MAX_IMPORT_BYTES = 256 * 1024;
@@ -14,6 +14,8 @@ export interface SettingsContext {
   onPillToggle(id: string, enabled: boolean): void;
   hideWhenQuiet: boolean;
   onHideWhenQuietChange(value: boolean): void;
+  gazeMode: GazeMode;
+  onGazeModeChange(mode: GazeMode): void;
   openDelayMs: number;
   onOpenDelayChange(ms: number): void;
   /** Forget where the island was dragged to and centre it on the current screen. */
@@ -39,6 +41,11 @@ export function renderSettings(ctx: SettingsContext): HTMLElement {
   const quietBox = h("input", { type: "checkbox", attrs: { "aria-label": "Hide when nothing is happening" } });
   quietBox.checked = ctx.hideWhenQuiet;
   quietBox.addEventListener("change", () => ctx.onHideWhenQuietChange(quietBox.checked));
+
+  const gazeSelect = h("select", { class: "input", attrs: { "aria-label": "Eyes follow the pointer" } });
+  for (const g of GAZE_MODES) gazeSelect.append(h("option", { text: g.label, value: g.mode }));
+  gazeSelect.value = ctx.gazeMode;
+  gazeSelect.addEventListener("change", () => ctx.onGazeModeChange(gazeSelect.value as GazeMode));
 
   const delaySelect = h("select", { class: "input", attrs: { "aria-label": "Open after resting the pointer" } });
   for (const d of OPEN_DELAYS) delaySelect.append(h("option", { text: d.label, value: String(d.ms) }));
@@ -212,6 +219,7 @@ export function renderSettings(ctx: SettingsContext): HTMLElement {
       h("label", { class: "row" }, quietBox, h("span", { class: "row-main", text: "Shrink to a sliver when nothing is happening" })),
       h("p", { class: "muted", text: "Rest the pointer on it to bring it back. Music and alerts always show." }),
       h("label", { class: "row" }, h("span", { class: "row-main", text: "Open after resting the pointer" }), delaySelect),
+      h("label", { class: "row" }, h("span", { class: "row-main", text: "Eyes follow the pointer" }), gazeSelect),
       h("p", { class: "muted", text: "Drag the avatar to move Perch along the top of any screen." }),
       h("div", { class: "row" }, h("button", { class: "btn", text: "Centre on this screen", on: { click: () => ctx.onResetPosition() } })),
     ),
