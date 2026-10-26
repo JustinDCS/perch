@@ -73,7 +73,10 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   // how the island is being held open
   let hovering = false;
   let pinned = false;
+  const needs = new Map<string, number>(); // questions waiting, by pill
   let alertOpen = false;
+  let arrivalTimer: ReturnType<typeof setTimeout> | undefined;
+  const ARRIVAL_OPEN_MS = 8000;
   let modalOpen = false;
   let leaveTimer: ReturnType<typeof setTimeout> | undefined;
   let openDelay = getOpenDelay();
@@ -281,7 +284,8 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   }
 
   function refresh(): void {
-    const alerts = [...tones.values()].filter((t) => t === "danger").length;
+    const alerts =
+      [...tones.values()].filter((t) => t === "danger").length + [...needs.values()].reduce((sum, n) => sum + n, 0);
     const busy = alerts > 0 || musicPlaying;
     if (busy) {
       asleep = false;
@@ -394,6 +398,25 @@ export async function mountApp(root: HTMLElement): Promise<void> {
       }
       refresh();
     },
+    reportNeeds(id, count) {
+      if (count > 0) needs.set(id, count);
+      else needs.delete(id);
+      refresh();
+    },
+    reportArrival(id) {
+      // a new request is waiting: the avatar perks up, a chime plays, and the island opens
+      // for a few seconds (unless you are already using it) before dropping back to the small view
+      avatarView?.react("anticipate");
+      sound.play("alert");
+      alertOpen = true;
+      clearTimeout(arrivalTimer);
+      arrivalTimer = setTimeout(() => {
+        alertOpen = false;
+        refresh();
+      }, ARRIVAL_OPEN_MS);
+      void id;
+      refresh();
+    },
     reportSources(count) {
       // a second app starts playing: it looks from one side to the other
       if (count > playingSources && count > 1) {
@@ -455,6 +478,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     for (const pill of pillViews) pill.stop();
     pillViews = [];
     tones.clear();
+    needs.clear();
     chips.clear();
     musicPlaying = false;
   }

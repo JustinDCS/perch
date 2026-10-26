@@ -89,8 +89,18 @@ export function isValidTemplate(text: string): boolean {
 }
 
 /** Fill the holes from `data`. Missing values show as an em dash, never as "undefined". */
-export function renderTemplate(text: string, data: unknown): string {
-  return text.replace(/\{([^{}]*)\}/g, (_, path: string) => formatValue(getPath(data, path)));
+export function renderTemplate(text: string, data: unknown, encode?: (value: string) => string): string {
+  return text.replace(/\{([^{}]*)\}/g, (_, path: string) => {
+    const text = formatValue(getPath(data, path));
+    return encode && text !== "—" ? encode(text) : text;
+  });
+}
+
+/** Holes of a template whose value is missing (not a string, number or boolean). */
+export function missingHoles(text: string, data: unknown): string[] {
+  return [...text.matchAll(/\{([^{}]*)\}/g)]
+    .map((m) => m[1]!)
+    .filter((path) => formatValue(getPath(data, path)) === "—");
 }
 
 /** A display field is either a plain path or a template. */

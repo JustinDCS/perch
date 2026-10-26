@@ -80,6 +80,11 @@ const real: Ipc = {
 function createMock(): Ipc {
   const approved = new Set<string>();
   const secrets = new Set<string>();
+  let pending = [
+    { id: "dep-41", title: "Deploy tincakes-site to production?", summary: "main · 3 commits since v1.4 · tests passed" },
+    { id: "inv-2041", title: "Approve invoice INV-2041?", summary: "Example client · R 12 480.00 · due 31 Oct" },
+  ];
+  let failedOnce = false;
   const files: Record<FileKind, UserFile[]> = {
     pips: [
       {
@@ -101,6 +106,29 @@ function createMock(): Ipc {
             subtitle: "{fields.status.name}",
             link: "https://{var.site}/browse/{key}",
             limit: 5,
+          },
+        }),
+      },
+      {
+        name: "demo-gate.json",
+        content: JSON.stringify({
+          perch: 1,
+          id: "demo-gate",
+          name: "Deploy gate",
+          kind: "rest",
+          icon: "🚦",
+          accent: "#f2b866",
+          refreshSeconds: 20,
+          request: { url: "https://mock.example.test/pending" },
+          display: {
+            layout: "approvals",
+            items: "requests",
+            title: "{title}",
+            detail: "{summary}",
+            actions: [
+              { label: "Reject", post: "https://mock.example.test/requests/{id}/reject" },
+              { label: "Approve", tone: "good", confirm: "This goes live. Deploy now?", post: "https://mock.example.test/requests/{id}/approve" },
+            ],
           },
         }),
       },
@@ -178,6 +206,18 @@ function createMock(): Ipc {
       const host = new URL(req.url).host;
       if (!approved.has(host)) throw `HOST_NOT_APPROVED:${host}`;
       if (req.auth && !secrets.has(req.auth.secret)) throw `SECRET_MISSING:${req.auth.secret}`;
+      const path = new URL(req.url).pathname;
+      if (path.endsWith("/pending")) return { requests: pending };
+      const answer = /\/requests\/([^/]+)\/(approve|reject)$/.exec(path);
+      if (answer) {
+        // the first approve fails once so the failed card can be seen
+        if (answer[2] === "approve" && !failedOnce) {
+          failedOnce = true;
+          throw "HTTP 403";
+        }
+        pending = pending.filter((r) => r.id !== decodeURIComponent(answer[1]!));
+        return null;
+      }
       return {
         count: 3 + Math.floor((Date.now() / 5000) % 9),
         items: [],

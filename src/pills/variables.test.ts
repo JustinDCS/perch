@@ -82,3 +82,44 @@ describe("variables in manifests", () => {
     expect(result.ok).toBe(false);
   });
 });
+
+describe("approvals display", () => {
+  const approvals = (actions: unknown, extra: Record<string, unknown> = {}) => ({
+    perch: 1,
+    id: "gate",
+    name: "Gate",
+    kind: "rest",
+    variables: [{ key: "site", label: "Site", type: "host" }],
+    request: { url: "https://{var.site}/pending" },
+    display: { layout: "approvals", items: "requests", title: "{title}", actions, ...extra },
+  });
+  const good = [{ label: "Approve", tone: "good", post: "https://{var.site}/r/{id}/approve" }];
+
+  it("accepts buttons that post to the same service", () => {
+    const result = validatePill(approvals(good, { detail: "{summary}" }));
+    if (!result.ok) throw new Error(result.errors.join());
+    expect(result.value.kind === "rest" && result.value.display.layout).toBe("approvals");
+  });
+
+  it("needs one to three buttons", () => {
+    expect(validatePill(approvals([])).ok).toBe(false);
+    const four = Array.from({ length: 4 }, (_, i) => ({ label: `B${i}`, post: "https://x.example.com/a" }));
+    expect(validatePill(approvals(four)).ok).toBe(false);
+  });
+
+  it("does not let the response choose where a button posts", () => {
+    for (const post of ["https://{host}/approve", "https://api.example.com{path}", "{url}/approve", "/relative"]) {
+      expect(validatePill(approvals([{ label: "Go", post }])).ok).toBe(false);
+    }
+  });
+
+  it("checks variables used by buttons are declared", () => {
+    const result = validatePill(approvals([{ label: "Go", post: "https://{var.other}/a" }]));
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.errors.join()).toContain('"other" is not listed in variables');
+  });
+
+  it("rejects unknown button fields", () => {
+    expect(validatePill(approvals([{ label: "Go", post: "https://x.example.com/a", method: "DELETE" }])).ok).toBe(false);
+  });
+});

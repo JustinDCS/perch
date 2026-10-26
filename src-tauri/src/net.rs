@@ -138,6 +138,10 @@ pub async fn fetch_json(
         body.extend_from_slice(&chunk);
     }
 
+    // many "do it" endpoints (approve, reject) answer with an empty body
+    if body.iter().all(|b| b.is_ascii_whitespace()) {
+        return Ok(serde_json::Value::Null);
+    }
     serde_json::from_slice(&body).map_err(|_| "response is not valid JSON".to_string())
 }
 

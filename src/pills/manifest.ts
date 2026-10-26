@@ -14,6 +14,8 @@ import {
   str,
 } from "../lib/validate";
 import type {
+  ApprovalAction,
+  ApprovalsDisplay,
   AuthSpec,
   ListDisplay,
   PillManifest,
@@ -93,6 +95,65 @@ function validateLink(v: unknown, path: string, errs: Errs): string | undefined 
     return undefined;
   }
   return s;
+}
+
+const VAR_HOLE = /\{var\.[a-z][a-z0-9_]*\}/g;
+
+/** The address a button posts to: literal scheme and host, {path} holes only after the host. */
+function validatePost(v: unknown, path: string, errs: Errs): string | undefined {
+  const s = str(v, path, errs, { max: 400 });
+  if (s === undefined) return undefined;
+  const bare = s.replace(VAR_HOLE, "var");
+  if (!/^https?:\/\//i.test(bare)) {
+    errs.push(`${path}: must start with https:// (a literal scheme)`);
+    return undefined;
+  }
+  const authority = bare.replace(/^https?:\/\//i, "").split(/[/?#]/)[0] ?? "";
+  if (authority.includes("{") || authority.includes("}")) {
+    errs.push(`${path}: the host part may use {var.name} but not {holes} from the response`);
+    return undefined;
+  }
+  if (!isValidTemplate(bare)) {
+    errs.push(`${path}: not a valid template (every {hole} must be a path)`);
+    return undefined;
+  }
+  return s;
+}
+
+function validateActions(raw: unknown, errs: Errs): ApprovalAction[] {
+  if (!Array.isArray(raw) || raw.length < 1 || raw.length > 3) {
+    errs.push("display.actions: must be a list of 1 to 3 buttons");
+    return [];
+  }
+  const out: ApprovalAction[] = [];
+  raw.forEach((item, i) => {
+    const path = `display.actions[${i}]`;
+    if (!isRecord(item)) {
+      errs.push(`${path}: must be an object`);
+      return;
+    }
+    noUnknownKeys(item, ["label", "tone", "confirm", "post", "body"], path, errs);
+    const label = str(item.label, `${path}.label`, errs, { max: 24 });
+    const tone = has(item, "tone") ? oneOf(item.tone, `${path}.tone`, errs, ["neutral", "good", "danger"] as const) : "neutral";
+    let confirm: boolean | string | undefined;
+    if (has(item, "confirm")) {
+      if (typeof item.confirm === "boolean") confirm = item.confirm;
+      else confirm = validateText(item.confirm, `${path}.confirm`, errs);
+    }
+    const post = validatePost(item.post, `${path}.post`, errs);
+    let body: unknown;
+    if (has(item, "body")) {
+      if (JSON.stringify(item.body).length > MAX_BODY_CHARS) {
+        errs.push(`${path}.body: must be smaller than ${MAX_BODY_CHARS} characters`);
+      } else body = item.body;
+    }
+    if (!label || !tone || !post) return;
+    const action: ApprovalAction = { label, tone, post };
+    if (confirm) action.confirm = confirm;
+    if (body !== undefined) action.body = body;
+    out.push(action);
+  });
+  return out;
 }
 
 function validateAuth(raw: unknown, path: string, errs: Errs): AuthSpec | undefined {
@@ -241,12 +302,25 @@ function validateThresholds(raw: unknown, errs: Errs): Threshold[] {
   return out;
 }
 
-function validateDisplay(raw: unknown, errs: Errs): StatDisplay | ListDisplay | undefined {
+function validateDisplay(raw: unknown, errs: Errs): StatDisplay | ListDisplay | ApprovalsDisplay | undefined {
   if (!isRecord(raw)) {
     errs.push("display: must be an object");
     return undefined;
   }
-  const layout = oneOf(raw.layout, "display.layout", errs, ["stat", "list"] as const);
+  const layout = oneOf(raw.layout, "display.layout", errs, ["stat", "list", "approvals"] as const);
+
+  if (layout === "approvals") {
+    noUnknownKeys(raw, ["layout", "items", "title", "detail", "actions", "limit"], "display", errs);
+    const items = validatePath(raw.items, "display.items", errs);
+    const title = validateText(raw.title, "display.title", errs);
+    const detail = has(raw, "detail") ? validateText(raw.detail, "display.detail", errs) : undefined;
+    const actions = validateActions(raw.actions, errs);
+    const limit = has(raw, "limit") ? num(raw.limit, "display.limit", errs, { min: 1, max: 10, int: true }) : 5;
+    if (!items || !title || actions.length === 0 || limit === undefined) return undefined;
+    const display: ApprovalsDisplay = { layout, items, title, actions, limit };
+    if (detail) display.detail = detail;
+    return display;
+  }
 
   if (layout === "stat") {
     noUnknownKeys(raw, ["layout", "value", "label", "unit", "thresholds"], "display", errs);
@@ -322,6 +396,12 @@ export function validatePill(raw: unknown): Result<PillManifest> {
       ["request.auth.user", request.auth?.type === "basic" ? varsIn(request.auth.user) : []],
       ["request.body", stringsIn(request.body).flatMap(varsIn)],
       ["display.link", display.layout === "list" && display.link ? varsIn(display.link) : []],
+      ...(display.layout === "approvals"
+        ? display.actions.map((a, i): [string, string[]] => [
+            `display.actions[${i}]`,
+            [...varsIn(a.post), ...stringsIn(a.body).flatMap(varsIn)],
+          ])
+        : []),
     ];
     for (const [where, keys] of uses) {
       for (const key of keys) {

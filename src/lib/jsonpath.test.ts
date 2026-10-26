@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatValue, getPath, isValidPath, parsePath, toNumber } from "./jsonpath";
+import { formatValue, getPath, isValidPath, missingHoles, parsePath, toNumber } from "./jsonpath";
 
 describe("parsePath", () => {
   it("parses names, nesting and indexes", () => {
@@ -110,5 +110,16 @@ describe("previewJson", () => {
     const circular: Record<string, unknown> = {};
     circular.self = circular;
     expect(previewJson(circular)).toBe("(could not show the response)");
+  });
+});
+
+describe("template encoding and missing values", () => {
+  it("encodes filled values when asked", () => {
+    expect(renderTemplate("/r/{id}/x", { id: "a b/c" }, encodeURIComponent)).toBe("/r/a%20b%2Fc/x");
+  });
+
+  it("lists holes with no value", () => {
+    expect(missingHoles("/r/{id}/{n.x}", { id: "1" })).toEqual(["n.x"]);
+    expect(missingHoles("/r/{id}", { id: 5 })).toEqual([]);
   });
 });

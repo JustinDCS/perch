@@ -1,13 +1,13 @@
 // REST/JSON pill. The manifest says where to fetch, how to authenticate (by secret *name*),
 // and which fields of the response to show. The request itself is made by Rust.
 
-import { formatValue, getPath, previewJson, renderTemplate, textOf } from "../lib/jsonpath";
+import { formatValue, getPath, missingHoles, previewJson, renderTemplate, textOf } from "../lib/jsonpath";
 import { errorText, ipc } from "../ipc";
 import { clear, h } from "../ui/dom";
 import { hostOf } from "./manifest";
 import { toneFor } from "./tone";
 import { fillBody, fillText, fillUrl, missingVars } from "./variables";
-import type { ListDisplay, PillHost, PillView, RestPill, StatDisplay, Tone } from "./types";
+import type { ApprovalAction, ApprovalsDisplay, ListDisplay, PillHost, PillView, RestPill, StatDisplay, Tone } from "./types";
 
 export function createRestPill(manifest: RestPill, host: PillHost): PillView {
   const content = h("div", { class: "pill-content" });
@@ -116,6 +116,200 @@ export function createRestPill(manifest: RestPill, host: PillHost): PillView {
     host.reportChip(manifest.id, { icon: manifest.icon, text: String(items.length) });
   }
 
+
+  // ---- approvals: questions waiting for the user, each with a few buttons ----------------------
+  type Card =
+    | { kind: "confirm"; index: number }
+    | { kind: "sending"; index: number }
+    | { kind: "done"; text: string }
+    | { kind: "failed"; index: number; text: string };
+  const cards = new Map<string, Card>();
+  const answered = new Map<string, number>(); // key -> when it may show again if the service still lists it
+  const announced = new Set<string>();
+  let approvalData: { display: ApprovalsDisplay; items: unknown[] } | undefined;
+
+  const ANSWERED_HIDE_MS = 120_000;
+  const DONE_SHOW_MS = 4_000;
+
+  /** The address for one button: {var.x} first (host checked, values encoded), then the item's {holes} encoded. */
+  function actionUrl(action: ApprovalAction, item: unknown): string {
+    const filled = fillUrl(action.post, host.variables(manifest.id), manifest.variables);
+    const missing = missingHoles(filled, item);
+    if (missing.length > 0) throw new Error(`this request has no value for {${missing[0]}}`);
+    return renderTemplate(filled, item, encodeURIComponent);
+  }
+
+  /** Fill {holes} from the item in every string of a JSON body. */
+  function withItem(value: unknown, item: unknown): unknown {
+    if (typeof value === "string") return renderTemplate(value, item);
+    if (Array.isArray(value)) return value.map((v) => withItem(v, item));
+    if (typeof value === "object" && value !== null) {
+      return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, withItem(v, item)]));
+    }
+    return value;
+  }
+
+  function itemKey(display: ApprovalsDisplay, item: unknown): string {
+    let where = "";
+    try {
+      where = actionUrl(display.actions[0]!, item);
+    } catch {
+      // an item without an id still gets a key from its title
+    }
+    return `${textOf(item, display.title)}\u0001${where}`;
+  }
+
+  function buttonFor(label: string, tone: "neutral" | "good" | "danger" | "warn", onClick: () => void, disabled = false): HTMLElement {
+    return h("button", { class: `approval-btn ${tone}`, text: label, attrs: disabled ? { disabled: "" } : {}, on: { click: onClick } });
+  }
+
+  function paintApprovals(): void {
+    if (!approvalData) return;
+    const { display, items } = approvalData;
+    clear(content);
+    const now = Date.now();
+    let waiting = 0;
+    const list = h("div", { class: "approvals" });
+    for (const item of items.slice(0, display.limit)) {
+      const key = itemKey(display, item);
+      const card = cards.get(key);
+      const hiddenUntil = answered.get(key);
+      if (hiddenUntil !== undefined && hiddenUntil > now && card?.kind !== "done") continue;
+      const title = textOf(item, display.title);
+
+      if (card?.kind === "done") {
+        list.append(
+          h("div", { class: "approval approval-done", attrs: { role: "status" } }, h("span", { class: "approval-check", text: "✓" }), h("span", { text: card.text })),
+        );
+        continue;
+      }
+      waiting += 1;
+
+      const failed = card?.kind === "failed";
+      const el = h("div", { class: `approval${failed ? " approval-failed" : ""}` });
+      if (failed) {
+        el.append(
+          h("div", { class: "approval-title", text: "Couldn't do that" }),
+          h("div", { class: "approval-detail", text: `${card.text}. Nothing was changed.` }),
+        );
+      } else if (card?.kind === "confirm") {
+        const action = display.actions[card.index]!;
+        const asked = typeof action.confirm === "string" ? renderTemplate(action.confirm, item) : `${action.label}: ${title}`;
+        el.append(h("div", { class: "approval-title", text: asked }));
+      } else {
+        el.append(h("div", { class: "approval-title", text: title }));
+        if (display.detail) el.append(h("div", { class: "approval-detail", text: textOf(item, display.detail) }));
+      }
+
+      const row = h("div", { class: "approval-actions" });
+      if (card?.kind === "sending") {
+        row.append(buttonFor("Working…", "neutral", () => undefined, true));
+      } else if (failed) {
+        row.append(
+          buttonFor("Dismiss", "neutral", () => {
+            cards.delete(key);
+            paintApprovals();
+          }),
+          buttonFor("Try again", "warn", () => void runAction(key, item, card.index)),
+        );
+      } else if (card?.kind === "confirm") {
+        const action = display.actions[card.index]!;
+        row.append(
+          buttonFor("Back", "neutral", () => {
+            cards.delete(key);
+            paintApprovals();
+          }),
+          buttonFor(`Yes, ${action.label.toLowerCase()}`, "warn", () => void runAction(key, item, card.index)),
+        );
+      } else {
+        display.actions.forEach((action, index) => {
+          row.append(
+            buttonFor(action.label, action.tone, () => {
+              if (action.confirm) {
+                cards.set(key, { kind: "confirm", index });
+                paintApprovals();
+              } else void runAction(key, item, index);
+            }),
+          );
+        });
+      }
+      el.append(row);
+      list.append(el);
+    }
+    if (list.childElementCount === 0) content.append(h("div", { class: "list-empty", text: "Nothing waiting" }));
+    else content.append(list);
+    setTone(waiting > 0 ? "warn" : "neutral");
+    host.reportChip(manifest.id, waiting > 0 ? { icon: manifest.icon, text: `${waiting} waiting` } : null);
+    host.reportNeeds(manifest.id, waiting);
+  }
+
+  async function runAction(key: string, item: unknown, index: number, retried = false): Promise<void> {
+    const display = approvalData?.display;
+    const action = display?.actions[index];
+    if (!display || !action) return;
+    cards.set(key, { kind: "sending", index });
+    paintApprovals();
+    const title = textOf(item, display.title);
+    try {
+      const values = host.variables(manifest.id);
+      const url = actionUrl(action, item);
+      const auth = manifest.request.auth;
+      const body =
+        action.body === undefined
+          ? undefined
+          : withItem(fillBody(action.body, values), item);
+      await ipc.fetchJson({
+        url,
+        method: "POST",
+        auth: auth?.type === "basic" ? { ...auth, user: fillText(auth.user, values) } : auth,
+        body,
+      });
+      recordResult(`"${action.label}" sent: OK`);
+      cards.set(key, { kind: "done", text: `${action.label} · ${title}` });
+      answered.set(key, Date.now() + ANSWERED_HIDE_MS);
+      paintApprovals();
+      setTimeout(() => {
+        if (cards.get(key)?.kind === "done") {
+          cards.delete(key);
+          paintApprovals();
+        }
+      }, DONE_SHOW_MS);
+      setTimeout(() => void refresh(), 1500);
+    } catch (err) {
+      const message = errorText(err instanceof Error ? err.message : err);
+      if (message.startsWith("HOST_NOT_APPROVED:") && !retried) {
+        const target = message.slice("HOST_NOT_APPROVED:".length);
+        if (await host.requestHostApproval(target)) return runAction(key, item, index, true);
+      }
+      recordResult(`"${action.label}" failed: ${message}`);
+      const text = message.startsWith("HOST_NOT_APPROVED:")
+        ? `Perch is not allowed to contact ${message.slice("HOST_NOT_APPROVED:".length)}`
+        : message.startsWith("SECRET_MISSING:")
+          ? `The secret "${message.slice("SECRET_MISSING:".length)}" is not set (Settings → Secrets)`
+          : message;
+      cards.set(key, { kind: "failed", index, text });
+      paintApprovals();
+    }
+  }
+
+  function renderApprovals(display: ApprovalsDisplay, data: unknown): void {
+    const found = getPath(data, display.items);
+    const items = Array.isArray(found) ? found : [];
+    const keys = new Set(items.map((item) => itemKey(display, item)));
+    // forget what no longer applies: items the service stopped listing
+    for (const key of [...answered.keys()]) if (!keys.has(key)) answered.delete(key);
+    for (const key of [...cards.keys()]) if (!keys.has(key) && cards.get(key)?.kind !== "done") cards.delete(key);
+    let arrived = false;
+    for (const key of keys) {
+      if (!announced.has(key) && !answered.has(key)) arrived = true;
+    }
+    for (const key of [...announced]) if (!keys.has(key)) announced.delete(key);
+    for (const key of keys) if (!answered.has(key)) announced.add(key);
+    approvalData = { display, items };
+    paintApprovals();
+    if (arrived) host.reportArrival(manifest.id);
+  }
+
   function handleError(err: unknown): void {
     const message = errorText(err);
     recordResult(`failed: ${message}`);
@@ -176,6 +370,7 @@ export function createRestPill(manifest: RestPill, host: PillHost): PillView {
       hasData = true;
       recordResult(`OK: ${previewJson(data)}`);
       if (manifest.display.layout === "stat") renderStat(manifest.display, data);
+      else if (manifest.display.layout === "approvals") renderApprovals(manifest.display, data);
       else renderList(manifest.display, data);
     } catch (err) {
       handleError(err instanceof Error ? err.message : err);
@@ -196,6 +391,7 @@ export function createRestPill(manifest: RestPill, host: PillHost): PillView {
     },
     stop() {
       if (timer) clearInterval(timer);
+      host.reportNeeds(manifest.id, 0);
       host.reportChip(manifest.id, null);
     },
   };

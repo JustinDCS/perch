@@ -1,0 +1,34 @@
+{
+  "perch": 1,
+  "id": "deploy-gate",
+  "name": "Deploy gate",
+  "kind": "rest",
+  "icon": "🚦",
+  "accent": "#f2b866",
+  "refreshSeconds": 30,
+  "variables": [
+    { "key": "site", "label": "Service address", "type": "host", "placeholder": "deploys.example.com" }
+  ],
+  "request": {
+    "url": "https://{var.site}/api/pending",
+    "method": "GET",
+    "auth": { "type": "bearer", "secret": "deploy-token" }
+  },
+  "display": {
+    "layout": "approvals",
+    "items": "requests",
+    "title": "{title}",
+    "detail": "{summary}",
+    "actions": [
+      { "label": "Reject", "post": "https://{var.site}/api/requests/{id}/reject" },
+      {
+        "label": "Approve",
+        "tone": "good",
+        "confirm": "This goes live. Deploy now?",
+        "post": "https://{var.site}/api/requests/{id}/approve",
+        "body": { "note": "Approved from Perch" }
+      }
+    ],
+    "limit": 5
+  }
+}

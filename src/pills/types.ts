@@ -49,6 +49,27 @@ export interface ListDisplay {
   limit: number;
 }
 
+export interface ApprovalAction {
+  label: string;
+  tone: "neutral" | "good" | "danger";
+  /** true: ask "are you sure?" first; a string is the question (it may use {path} holes) */
+  confirm?: boolean | string;
+  /** where to POST when the button is pressed; {path} holes come from the item, {var.x} from settings */
+  post: string;
+  /** optional JSON body; string values may use the same holes */
+  body?: unknown;
+}
+
+/** Questions waiting for the user, each with one to three buttons. */
+export interface ApprovalsDisplay {
+  layout: "approvals";
+  items: string;
+  title: string;
+  detail?: string;
+  actions: ApprovalAction[];
+  limit: number;
+}
+
 export interface RestPill {
   perch: 1;
   id: string;
@@ -60,7 +81,7 @@ export interface RestPill {
   refreshSeconds: number;
   variables?: PillVariable[];
   request: RestRequest;
-  display: StatDisplay | ListDisplay;
+  display: StatDisplay | ListDisplay | ApprovalsDisplay;
 }
 
 export interface NowPlayingPill {
@@ -90,6 +111,10 @@ export interface PillHost {
   reportChip(id: string, chip: Chip | null): void;
   /** The user's values for this pill's variables (defaults filled in; "" when unset). */
   variables(id: string): Record<string, string>;
+  /** How many questions this pill has waiting for the user (counted in "N need you"). */
+  reportNeeds(id: string, count: number): void;
+  /** A new request is waiting: the island should notice (avatar, sound, opens for a moment). */
+  reportArrival(id: string): void;
   /** Open the Library so the user can fill in a pill's variables. */
   openSettings(): void;
   /** Ask the user to allow a host; resolves true if they agreed and it was saved. */
