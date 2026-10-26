@@ -324,18 +324,20 @@ function validateDisplay(raw: unknown, errs: Errs): StatDisplay | ListDisplay | 
   }
 
   if (layout === "chart") {
-    noUnknownKeys(raw, ["layout", "values", "label", "unit", "period"], "display", errs);
+    noUnknownKeys(raw, ["layout", "values", "field", "label", "unit", "period"], "display", errs);
     const list = Array.isArray(raw.values) ? raw.values : [raw.values];
     if (list.length < 1 || list.length > 4) errs.push("display.values: give one path, or up to four");
     const values = list.map((v, i) => validatePath(v, `display.values[${i}]`, errs));
     const label = has(raw, "label") ? str(raw.label, "display.label", errs, { max: 60 }) : undefined;
     const unit = has(raw, "unit") ? str(raw.unit, "display.unit", errs, { min: 0, max: 12 }) : undefined;
+    const field = has(raw, "field") ? validatePath(raw.field, "display.field", errs) : undefined;
     const period = has(raw, "period") ? str(raw.period, "display.period", errs, { min: 0, max: 30 }) : undefined;
     if (list.length < 1 || list.length > 4 || values.some((v) => v === undefined)) return undefined;
     const display: ChartDisplay = { layout, values: values as string[] };
     if (label !== undefined) display.label = label;
     if (unit !== undefined) display.unit = unit;
     if (period !== undefined) display.period = period;
+    if (field !== undefined) display.field = field;
     return display;
   }
 

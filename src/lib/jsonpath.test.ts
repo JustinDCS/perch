@@ -8,8 +8,15 @@ describe("parsePath", () => {
     expect(parsePath("a[1][2]")).toEqual(["a", 1, 2]);
   });
 
+  it("accepts negative indexes", () => {
+    expect(parsePath("a[-1]")).toEqual(["a", -1]);
+    expect(getPath({ a: [1, 2, 3] }, "a[-1]")).toBe(3);
+    expect(getPath({ a: [1, 2, 3] }, "a[-3]")).toBe(1);
+    expect(getPath({ a: [1, 2, 3] }, "a[-4]")).toBeUndefined();
+  });
+
   it("rejects empty, malformed and prototype-reaching paths", () => {
-    for (const bad of ["", "...", "a[", "a[x]", "a[-1]", "__proto__", "a.constructor", "a.prototype.b"]) {
+    for (const bad of ["", "...", "a[", "a[x]", "a[--1]", "__proto__", "a.constructor", "a.prototype.b"]) {
       expect(parsePath(bad), bad).toBeNull();
       expect(isValidPath(bad), bad).toBe(false);
     }

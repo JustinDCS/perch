@@ -1,6 +1,6 @@
 // A deliberately tiny path language for mapping API responses onto pill fields:
 //   "count"            top-level property
-//   "data.items[0].id" nested properties and array indexes
+//   "data.items[0].id" nested properties and array indexes ([-1] is the last one)
 //   "issues.length"    length of an array
 // Only own properties are read, and __proto__ / constructor / prototype are refused.
 
@@ -23,7 +23,7 @@ export function parsePath(path: string): Segment[] | null {
       const end = path.indexOf("]", i);
       if (end < 0) return null;
       const inner = path.slice(i + 1, end);
-      if (!/^\d{1,6}$/.test(inner)) return null;
+      if (!/^-?\d{1,6}$/.test(inner)) return null;
       segments.push(Number(inner));
       i = end + 1;
       continue;
@@ -50,7 +50,8 @@ export function getPath(data: unknown, path: string): unknown {
   for (const segment of segments) {
     if (typeof segment === "number") {
       if (!Array.isArray(current)) return undefined;
-      current = current[segment];
+      // a negative index counts from the end: [-1] is the last item
+      current = current[segment < 0 ? current.length + segment : segment];
     } else if (Array.isArray(current) && segment === "length") {
       current = current.length;
     } else if (isRecord(current) && Object.hasOwn(current, segment)) {

@@ -83,7 +83,11 @@ export function createRestPill(manifest: RestPill, host: PillHost): PillView {
     const numbers: number[] = [];
     for (const path of display.values) {
       const found = getPath(data, path);
-      if (Array.isArray(found)) for (const n of found) if (typeof n === "number" && Number.isFinite(n)) numbers.push(Math.max(0, n));
+      if (!Array.isArray(found)) continue;
+      for (const item of found) {
+        const n = display.field ? getPath(item, display.field) : item;
+        if (typeof n === "number" && Number.isFinite(n)) numbers.push(Math.max(0, n));
+      }
     }
     clear(content);
     setTone("neutral");

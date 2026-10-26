@@ -43,6 +43,8 @@ export interface StatDisplay {
 export interface ChartDisplay {
   layout: "chart";
   values: string[];
+  /** when the arrays hold objects, the name of the number inside each, e.g. "contributionCount" */
+  field?: string;
   label?: string;
   unit?: string;
   /** small caption next to the total, e.g. "last 14 days" */
