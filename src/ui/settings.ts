@@ -2,6 +2,7 @@ import { avatarName, validateAnyAvatar } from "../avatar/any";
 import { type Config } from "../config";
 import { errorText, ipc } from "../ipc";
 import { secretsOf } from "../pills/manifest";
+import { SOUND_MODES, type SoundMode } from "../sound/sounds";
 import { GAZE_MODES, getDisabledPills, OPEN_DELAYS, type GazeMode } from "../settings";
 import { clear, h } from "./dom";
 
@@ -14,6 +15,11 @@ export interface SettingsContext {
   onPillToggle(id: string, enabled: boolean): void;
   hideWhenQuiet: boolean;
   onHideWhenQuietChange(value: boolean): void;
+  soundMode: SoundMode;
+  onSoundModeChange(mode: SoundMode): void;
+  soundVolume: number;
+  onSoundVolumeChange(volume: number): void;
+  onSoundTest(): void;
   peeks: boolean;
   onPeeksChange(value: boolean): void;
   gazeMode: GazeMode;
@@ -43,6 +49,14 @@ export function renderSettings(ctx: SettingsContext): HTMLElement {
   const quietBox = h("input", { type: "checkbox", attrs: { "aria-label": "Hide when nothing is happening" } });
   quietBox.checked = ctx.hideWhenQuiet;
   quietBox.addEventListener("change", () => ctx.onHideWhenQuietChange(quietBox.checked));
+
+  const soundSelect = h("select", { class: "input", attrs: { "aria-label": "Sounds" } });
+  for (const m of SOUND_MODES) soundSelect.append(h("option", { text: m.label, value: m.mode }));
+  soundSelect.value = ctx.soundMode;
+  soundSelect.addEventListener("change", () => ctx.onSoundModeChange(soundSelect.value as SoundMode));
+  const volume = h("input", { type: "range", class: "np-seek", attrs: { min: "0", max: "100", step: "5", "aria-label": "Volume" } });
+  volume.value = String(Math.round(ctx.soundVolume * 100));
+  volume.addEventListener("change", () => ctx.onSoundVolumeChange(Number(volume.value) / 100));
 
   const peekBox = h("input", { type: "checkbox", attrs: { "aria-label": "Peek out and wink now and then" } });
   peekBox.checked = ctx.peeks;
@@ -229,6 +243,13 @@ export function renderSettings(ctx: SettingsContext): HTMLElement {
       h("label", { class: "row" }, h("span", { class: "row-main", text: "Eyes follow the pointer" }), gazeSelect),
       h("p", { class: "muted", text: "Drag the avatar to move Perch along the top of any screen." }),
       h("div", { class: "row" }, h("button", { class: "btn", text: "Centre on this screen", on: { click: () => ctx.onResetPosition() } })),
+    ),
+    section(
+      "Sounds",
+      h("label", { class: "row" }, h("span", { class: "row-main", text: "Play sounds" }), soundSelect),
+      h("label", { class: "row" }, h("span", { class: "row-main", text: "Volume" }), volume),
+      h("div", { class: "row" }, h("button", { class: "btn", text: "Test the alert sound", on: { click: () => ctx.onSoundTest() } })),
+      h("p", { class: "muted", text: "Small synthesised blips, quiet by default. Alerts only keeps just the \"hey\" chirp when a pill turns red." }),
     ),
     section("Pills", ...pillRows),
     section("Secrets", h("p", { class: "muted", text: "Stored in Windows Credential Manager. Perch never shows them again." }), secretsBody),

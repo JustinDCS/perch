@@ -11,6 +11,8 @@ import {
 import { createView } from "../avatar/any";
 import { nextPeekDelay } from "../avatar/life";
 import type { AvatarView } from "../avatar/renderer";
+import { createSoundPlayer } from "../sound/player";
+import type { SoundMode } from "../sound/sounds";
 import { loadConfig, resolveAvatar, type Config } from "../config";
 import { inTauri, ipc } from "../ipc";
 import { hostOf } from "../pills/manifest";
@@ -25,6 +27,8 @@ import {
   getOpenDelay,
   getPeeks,
   getPlacement,
+  getSoundMode,
+  getSoundVolume,
   setAvatarFile,
   setGazeMode,
   setHideWhenQuiet,
@@ -32,6 +36,8 @@ import {
   setPeeks,
   setPillEnabled,
   setPlacement,
+  setSoundMode,
+  setSoundVolume,
 } from "../settings";
 import { clear, h } from "./dom";
 import { icon } from "./icons";
@@ -67,6 +73,9 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   let dragging = false;
   let gazeMode = getGazeMode();
   let peeksOn = getPeeks();
+  let soundMode: SoundMode = getSoundMode();
+  let soundVolume = getSoundVolume();
+  const sound = createSoundPlayer(() => ({ mode: soundMode, volume: soundVolume }));
   // the hidden avatar sometimes slides out, looks around, winks and slides back
   type Peek = "off" | "in" | "hold" | "out";
   let peek: Peek = "off";
@@ -159,6 +168,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     sleepTimer = undefined;
     if (asleep) {
       asleep = false;
+      sound.play("wake");
       refresh();
     }
   }
@@ -211,6 +221,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
       island.dataset.peek = next;
     };
     set("in");
+    sound.play("peek");
     refresh();
     at(450, () => {
       set("hold");
@@ -220,6 +231,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     at(1800, () => {
       avatarView?.glance(0, 0.1, 700);
       avatarView?.react("wink");
+      sound.play("wink");
     });
     at(2600, () => {
       set("out");
@@ -264,6 +276,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
       sleepTimer = setTimeout(() => {
         sleepTimer = undefined;
         asleep = true;
+        sound.play("sleep");
         refresh();
       }, SLEEP_AFTER_MS);
     }
@@ -355,11 +368,15 @@ export async function mountApp(root: HTMLElement): Promise<void> {
       if (tone === "danger" && before !== "danger") {
         alertOpen = true;
         avatarView?.react("anticipate");
+        sound.play("alert");
       }
       refresh();
     },
     reportMusic(playing) {
-      if (playing && !musicPlaying) avatarView?.react("perk");
+      if (playing && !musicPlaying) {
+        avatarView?.react("perk");
+        sound.play("start");
+      }
       musicPlaying = playing;
       refresh();
     },
@@ -369,6 +386,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
       if (chip && previous && previous.text !== chip.text && config.pills.find((p) => p.id === id)?.kind === "now-playing") {
         avatarView?.react("perk");
         avatarView?.glance(0.8, -0.2, 900);
+        sound.play("track");
       }
       if (chip) chips.set(id, chip);
       else chips.delete(id);
@@ -458,6 +476,17 @@ export async function mountApp(root: HTMLElement): Promise<void> {
           gazeMode = mode;
           setGazeMode(mode);
         },
+        soundMode,
+        onSoundModeChange(mode) {
+          soundMode = mode;
+          setSoundMode(mode);
+        },
+        soundVolume,
+        onSoundVolumeChange(volume) {
+          soundVolume = volume;
+          setSoundVolume(volume);
+        },
+        onSoundTest: () => sound.play("alert", true),
         peeks: peeksOn,
         onPeeksChange(value) {
           peeksOn = value;
@@ -500,6 +529,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     ring.hidden = true;
   }
   function openNow(): void {
+    if (island.dataset.mode !== "home") sound.play("open");
     stopDwell();
     clearTimeout(leaveTimer);
     hovering = true;
@@ -567,6 +597,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     dragging = true;
     island.dataset.dragging = "on";
     avatarView?.react("startle");
+    sound.play("grab");
     clearTimeout(leaveTimer);
   }
 
@@ -606,6 +637,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     if (!wasDragging) return;
     justDragged = true; // swallow the click that follows a drag
     avatarView?.react("squash");
+    sound.play("drop");
     setTimeout(() => (justDragged = false), 0);
     void dragStep().finally(() => {
       dragging = false;

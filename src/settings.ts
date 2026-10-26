@@ -1,3 +1,4 @@
+import { SOUND_MODES, type SoundMode } from "./sound/sounds";
 import { parsePlacement, type Placement } from "./ui/placement";
 
 // Per-user UI preferences kept in localStorage. Everything is wrapped in try/catch because
@@ -158,6 +159,48 @@ export function getPeeks(): boolean {
 export function setPeeks(value: boolean): void {
   try {
     localStorage.setItem(PEEK_KEY, value ? "1" : "0");
+  } catch {
+    // ignore
+  }
+}
+
+// ---- sounds ------------------------------------------------------------------------------------
+
+
+const SOUND_MODE_KEY = "perch.soundMode";
+const SOUND_VOLUME_KEY = "perch.soundVolume";
+export const DEFAULT_SOUND_VOLUME = 0.35;
+
+export function getSoundMode(): SoundMode {
+  try {
+    const value = localStorage.getItem(SOUND_MODE_KEY);
+    return SOUND_MODES.some((m) => m.mode === value) ? (value as SoundMode) : "all";
+  } catch {
+    return "all";
+  }
+}
+
+export function setSoundMode(mode: SoundMode): void {
+  try {
+    localStorage.setItem(SOUND_MODE_KEY, mode);
+  } catch {
+    // ignore
+  }
+}
+
+export function getSoundVolume(): number {
+  try {
+    const raw = localStorage.getItem(SOUND_VOLUME_KEY);
+    const value = raw === null ? NaN : Number(raw);
+    return Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : DEFAULT_SOUND_VOLUME;
+  } catch {
+    return DEFAULT_SOUND_VOLUME;
+  }
+}
+
+export function setSoundVolume(volume: number): void {
+  try {
+    localStorage.setItem(SOUND_VOLUME_KEY, String(volume));
   } catch {
     // ignore
   }
