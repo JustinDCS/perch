@@ -42,3 +42,22 @@ export function setAvatarFile(file: string | null): void {
     // ignore
   }
 }
+
+const HIDE_QUIET_KEY = "perch.hideWhenQuiet";
+
+/** Should the island shrink to a sliver when nothing is happening? On unless the user turned it off. */
+export function getHideWhenQuiet(): boolean {
+  try {
+    return localStorage.getItem(HIDE_QUIET_KEY) !== "0";
+  } catch {
+    return true;
+  }
+}
+
+export function setHideWhenQuiet(value: boolean): void {
+  try {
+    localStorage.setItem(HIDE_QUIET_KEY, value ? "1" : "0");
+  } catch {
+    // ignore
+  }
+}

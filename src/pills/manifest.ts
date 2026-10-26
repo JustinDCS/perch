@@ -4,6 +4,7 @@ import {
   type Result,
   fail,
   has,
+  hexColor,
   isRecord,
   noUnknownKeys,
   num,
@@ -226,18 +227,20 @@ export function validatePill(raw: unknown): Result<PillManifest> {
   });
   const name = str(raw.name, "name", errs, { max: 40 });
   const icon = has(raw, "icon") ? str(raw.icon, "icon", errs, { max: 8 }) : undefined;
+  const accent = has(raw, "accent") ? hexColor(raw.accent, "accent", errs) : undefined;
   const kind = oneOf(raw.kind, "kind", errs, ["rest", "now-playing"] as const);
 
   if (kind === "now-playing") {
-    noUnknownKeys(raw, ["perch", "id", "name", "kind", "icon"], "", errs);
+    noUnknownKeys(raw, ["perch", "id", "name", "kind", "icon", "accent"], "", errs);
     if (errs.length > 0 || !id || !name) return fail(...errs);
     const pill: PillManifest = { perch: 1, id, name, kind };
     if (icon) pill.icon = icon;
+    if (accent) pill.accent = accent;
     return ok(pill);
   }
 
   if (kind === "rest") {
-    noUnknownKeys(raw, ["perch", "id", "name", "kind", "icon", "refreshSeconds", "request", "display"], "", errs);
+    noUnknownKeys(raw, ["perch", "id", "name", "kind", "icon", "accent", "refreshSeconds", "request", "display"], "", errs);
     const refreshSeconds = has(raw, "refreshSeconds")
       ? num(raw.refreshSeconds, "refreshSeconds", errs, { min: 5, max: 86400, int: true })
       : 60;
@@ -248,6 +251,7 @@ export function validatePill(raw: unknown): Result<PillManifest> {
     }
     const pill: PillManifest = { perch: 1, id, name, kind, refreshSeconds, request, display };
     if (icon) pill.icon = icon;
+    if (accent) pill.accent = accent;
     return ok(pill);
   }
 

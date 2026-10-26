@@ -25,6 +25,7 @@ const ICONS = {
     filled: false,
     shapes: [path("M4 8h9M17 8h3M4 16h3M11 16h9"), circle("15", "8", "2"), circle("9", "16", "2")],
   },
+  up: { filled: false, shapes: [path("M5 15l7-7 7 7")] },
   back: { filled: false, shapes: [path("M15 5l-7 7 7 7")] },
   music: { filled: true, shapes: [path("M9 17V5l10-2v12"), circle("7", "17", "2.5"), circle("17", "15", "2.5")] },
 } satisfies Record<string, IconDef>;

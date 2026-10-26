@@ -25,6 +25,8 @@ export function createRestPill(manifest: RestPill, host: PillHost): PillView {
     notice,
   );
 
+  if (manifest.accent) root.style.setProperty("--pill-accent", manifest.accent);
+
   let timer: ReturnType<typeof setInterval> | undefined;
   let busy = false;
   let hasData = false;
@@ -48,6 +50,7 @@ export function createRestPill(manifest: RestPill, host: PillHost): PillView {
     content.append(value);
     if (display.label) content.append(h("div", { class: "stat-label", text: display.label }));
     setTone(toneFor(raw, display.thresholds));
+    host.reportChip(manifest.id, { icon: manifest.icon, text: `${formatValue(raw)}${display.unit ? ` ${display.unit}` : ""}` });
   }
 
   function renderList(display: ListDisplay, data: unknown): void {
@@ -56,6 +59,7 @@ export function createRestPill(manifest: RestPill, host: PillHost): PillView {
     if (!Array.isArray(items) || items.length === 0) {
       content.append(h("div", { class: "list-empty", text: "No items" }));
       setTone("neutral");
+      host.reportChip(manifest.id, { icon: manifest.icon, text: "0" });
       return;
     }
     const list = h("ul", { class: "list" });
@@ -68,6 +72,7 @@ export function createRestPill(manifest: RestPill, host: PillHost): PillView {
     }
     content.append(list);
     setTone("neutral");
+    host.reportChip(manifest.id, { icon: manifest.icon, text: String(items.length) });
   }
 
   function handleError(err: unknown): void {
@@ -132,6 +137,7 @@ export function createRestPill(manifest: RestPill, host: PillHost): PillView {
     },
     stop() {
       if (timer) clearInterval(timer);
+      host.reportChip(manifest.id, null);
     },
   };
 }

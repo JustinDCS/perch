@@ -38,9 +38,8 @@ export function createNowPlayingPill(manifest: NowPlayingPill, host: PillHost): 
   const player = h(
     "div",
     { class: "np-player", hidden: true },
-    h("div", { class: "np-top" }, art, h("div", { class: "np-meta" }, title, artist, source)),
-    h("div", { class: "np-controls" }, prevBtn, playBtn, nextBtn),
-    h("div", { class: "np-progress" }, elapsed, seek, total),
+    h("div", { class: "np-top" }, art, h("div", { class: "np-meta" }, title, artist, source), playBtn),
+    h("div", { class: "np-progress" }, prevBtn, elapsed, seek, total, nextBtn),
   );
 
   const root = h(
@@ -55,6 +54,8 @@ export function createNowPlayingPill(manifest: NowPlayingPill, host: PillHost): 
     empty,
     player,
   );
+
+  if (manifest.accent) root.style.setProperty("--pill-accent", manifest.accent);
 
   let current: MediaState | null = null;
   let receivedAt = 0;
@@ -103,6 +104,7 @@ export function createNowPlayingPill(manifest: NowPlayingPill, host: PillHost): 
     empty.hidden = s.available;
     player.hidden = !s.available;
     host.reportMusic(s.available && s.playing);
+    host.reportChip(manifest.id, s.available ? { icon: "♪", text: s.title || "Playing" } : null);
     if (!s.available) return;
 
     title.textContent = s.title || "Unknown title";
@@ -110,7 +112,7 @@ export function createNowPlayingPill(manifest: NowPlayingPill, host: PillHost): 
     source.textContent = friendlyApp(s.app);
 
     clear(playBtn);
-    playBtn.append(icon(s.playing ? "pause" : "play", 26));
+    playBtn.append(icon(s.playing ? "pause" : "play", 22));
     playBtn.title = s.playing ? "Pause" : "Play";
     playBtn.setAttribute("aria-label", playBtn.title);
     playBtn.disabled = !s.canPlayPause;
@@ -137,6 +139,7 @@ export function createNowPlayingPill(manifest: NowPlayingPill, host: PillHost): 
       empty.hidden = false;
       player.hidden = true;
       host.reportMusic(false);
+      host.reportChip(manifest.id, null);
     } finally {
       inFlight = false;
     }
@@ -181,6 +184,7 @@ export function createNowPlayingPill(manifest: NowPlayingPill, host: PillHost): 
       if (pollTimer) clearInterval(pollTimer);
       if (tickTimer) clearInterval(tickTimer);
       host.reportMusic(false);
+      host.reportChip(manifest.id, null);
     },
   };
 }

@@ -156,3 +156,15 @@ describe("toneFor", () => {
     expect(toneFor(15, [{ gte: 1, lte: 9, tone: "good" }])).toBe("neutral");
   });
 });
+
+describe("pill accent colour", () => {
+  const base = { perch: 1, id: "tint", name: "Tint", kind: "now-playing" };
+  it("accepts a #rrggbb accent and keeps it", () => {
+    const result = validatePill({ ...base, accent: "#6fd9b8" });
+    expect(result.ok && result.value.accent).toBe("#6fd9b8");
+  });
+  it("rejects anything that is not a #rrggbb colour", () => {
+    expect(validatePill({ ...base, accent: "red" }).ok).toBe(false);
+    expect(validatePill({ ...base, accent: "url(javascript:1)" }).ok).toBe(false);
+  });
+});

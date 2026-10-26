@@ -16,6 +16,9 @@
 * {
   box-sizing: border-box;
 }
+[hidden] {
+  display: none !important;
+}
 
 html,
 body {
@@ -36,27 +39,108 @@ input[type="checkbox"] {
   accent-color: var(--accent);
 }
 
-.card {
-  position: relative;
-  width: 100%;
-  max-height: 640px;
-  overflow-y: auto;
-  background: var(--bg);
-  border: 1px solid var(--line);
-  border-radius: 18px;
+/* island ------------------------------------------------------------------ */
+:root {
+  --ink: #111216;
+  --r: 32px;
 }
-
-/* header ---------------------------------------------------------------- */
-.header {
+#root {
+  display: flex;
+  justify-content: center;
+}
+.island {
+  position: relative;
+  width: max-content;
+  max-width: 452px;
+  padding: 0 16px;
+}
+.island[data-mode="home"] {
+  width: 452px;
+  padding-bottom: 32px;
+}
+.island[data-mode="small"] {
+  padding-bottom: 20px;
+}
+.island[data-mode="hidden"] {
+  width: 100px;
+  height: 28px;
+  padding: 0;
+}
+.shoulder {
+  position: absolute;
+  top: 0;
+  width: 16px;
+  height: 16px;
+  pointer-events: none;
+}
+.shoulder.left {
+  left: 0;
+  background: radial-gradient(circle at 0 100%, transparent 15.5px, var(--ink) 16px);
+}
+.shoulder.right {
+  right: 0;
+  background: radial-gradient(circle at 100% 100%, transparent 15.5px, var(--ink) 16px);
+}
+.island[data-mode="hidden"] .shoulder {
+  display: none;
+}
+.island-body {
+  position: relative;
+  background: var(--ink);
+  border-radius: 0 0 var(--r) var(--r);
+  transition: box-shadow 0.3s;
+}
+.island[data-mode="home"] .island-body {
+  padding: 12px 14px 22px;
+}
+.island[data-mode="small"] .island-body {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 10px 8px 12px;
+  min-height: 44px;
+  padding: 6px 14px 6px 62px;
+  border-radius: 0 0 24px 24px;
+}
+.island[data-mode="hidden"] .island-body {
+  width: 68px;
+  height: 6px;
+  margin: 0 auto;
+  padding: 0;
+  border-radius: 0 0 6px 6px;
+  overflow: hidden;
+}
+/* the line along the lip takes the worst tone */
+.island[data-tone="good"] .island-body {
+  box-shadow: 0 2px 0 var(--good), 0 8px 18px color-mix(in srgb, var(--good) 22%, transparent);
+}
+.island[data-tone="warn"] .island-body {
+  box-shadow: 0 2px 0 var(--warn), 0 8px 18px color-mix(in srgb, var(--warn) 24%, transparent);
+}
+.island[data-tone="danger"] .island-body {
+  box-shadow: 0 2px 0 var(--danger), 0 8px 18px color-mix(in srgb, var(--danger) 30%, transparent);
+}
+.island[data-mode="hidden"] .island-body {
+  box-shadow: none;
+}
+
+/* the avatar perches on the lip */
+.perch {
+  position: absolute;
+  z-index: 2;
+  padding: 4px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--ink);
+  line-height: 0;
+  cursor: pointer;
+}
+.perch:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 .avatar-slot {
-  width: 48px;
-  height: 48px;
-  flex: none;
+  width: var(--perch-size, 40px);
+  height: var(--perch-size, 40px);
+  transition: width 0.2s, height 0.2s;
 }
 .avatar {
   width: 100%;
@@ -64,29 +148,50 @@ input[type="checkbox"] {
   display: block;
   pointer-events: none;
 }
-.header-text {
-  flex: 1;
-  min-width: 0;
+.island[data-mode="home"] .perch {
+  --perch-size: 52px;
+  left: 52px;
+  bottom: 6px;
 }
-.app-title {
-  font-weight: 600;
-  font-size: 14px;
+.island[data-mode="small"] .perch {
+  --perch-size: 34px;
+  left: 26px;
+  top: 22px;
+  padding: 3px;
 }
-.status {
-  color: var(--muted);
-  font-size: 12px;
-}
-.status[data-state="attention"] {
-  color: var(--danger);
-}
-.status[data-state="asleep"] {
-  color: var(--muted);
-  opacity: 0.8;
-}
-.status[data-state="music"] {
-  color: var(--good);
+.island[data-mode="hidden"] .perch {
+  --perch-size: 34px;
+  left: 50%;
+  top: 6px;
+  height: 16px;
+  padding: 0;
+  overflow: hidden;
+  transform: translateX(-50%);
+  background: none;
+  border-radius: 0;
 }
 
+/* header and chips ------------------------------------------------------------ */
+.island-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 4px;
+}
+.island-label {
+  flex: 1;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.island-label[data-state="attention"] {
+  color: #ff9d92;
+}
+.island-label[data-state="music"] {
+  color: #8fe8cb;
+}
 .icon-btn {
   display: inline-grid;
   place-items: center;
@@ -114,36 +219,81 @@ input[type="checkbox"] {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
+.chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.chip {
+  --c: var(--pill-accent, #8fb4ff);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 170px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--c) 20%, var(--ink));
+  color: color-mix(in srgb, var(--c) 62%, white);
+  font-size: 12px;
+  font-weight: 600;
+}
+.chip[data-kind="now-playing"] {
+  --c: var(--pill-accent, #6fd9b8);
+}
+.chip[data-tone="good"] {
+  --c: var(--good);
+}
+.chip[data-tone="warn"] {
+  --c: var(--warn);
+}
+.chip[data-tone="danger"] {
+  --c: var(--danger);
+}
+.chip-quiet {
+  --c: #9aa1b5;
+}
+.chip-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
-/* pills ----------------------------------------------------------------- */
+/* pills ----------------------------------------------------------------------- */
 .body {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 0 10px 10px;
+  margin-top: 6px;
+  max-height: 520px;
+  overflow-y: auto;
+  scrollbar-width: thin;
 }
 .pill {
-  background: var(--bg-2);
-  border: 1px solid var(--line);
-  border-left-width: 3px;
-  border-radius: 14px;
-  padding: 10px 12px;
+  --c: var(--pill-accent, #8fb4ff);
+  background: color-mix(in srgb, var(--c) 16%, #14161c);
+  border-radius: 22px;
+  padding: 14px;
+}
+.pill-now-playing {
+  --c: var(--pill-accent, #6fd9b8);
 }
 .pill[data-tone="good"] {
-  border-left-color: var(--good);
+  --c: var(--good);
 }
 .pill[data-tone="warn"] {
-  border-left-color: var(--warn);
+  --c: var(--warn);
 }
 .pill[data-tone="danger"] {
-  border-left-color: var(--danger);
+  --c: var(--danger);
 }
 .pill-head {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: var(--muted);
+  color: color-mix(in srgb, var(--c) 70%, white);
   font-size: 12px;
+  font-weight: 600;
   margin-bottom: 6px;
 }
 .pill-icon {
@@ -151,27 +301,19 @@ input[type="checkbox"] {
   place-items: center;
 }
 .stat-value {
-  font-size: 28px;
-  font-weight: 600;
-  line-height: 1.1;
-}
-.pill[data-tone="good"] .stat-value {
-  color: var(--good);
-}
-.pill[data-tone="warn"] .stat-value {
-  color: var(--warn);
-}
-.pill[data-tone="danger"] .stat-value {
-  color: var(--danger);
+  color: color-mix(in srgb, var(--c) 35%, white);
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.15;
 }
 .stat-unit {
   font-size: 14px;
-  color: var(--muted);
+  opacity: 0.7;
   font-weight: 400;
 }
 .stat-label,
 .list-empty {
-  color: var(--muted);
+  color: color-mix(in srgb, var(--c) 45%, var(--muted));
   font-size: 12px;
 }
 .list {
@@ -192,46 +334,55 @@ input[type="checkbox"] {
   white-space: nowrap;
 }
 .list-subtitle {
-  color: var(--muted);
+  color: color-mix(in srgb, var(--c) 45%, var(--muted));
   flex: none;
 }
 .pill-notice {
   margin-top: 8px;
-  padding: 6px 8px;
-  border-radius: 8px;
-  background: var(--bg-3);
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.3);
   color: var(--muted);
   font-size: 12px;
   user-select: text;
 }
 
-/* now playing ------------------------------------------------------------ */
+/* now playing ------------------------------------------------------------------ */
+.pill-now-playing .pill-head {
+  display: none;
+}
+.np-player {
+  display: grid;
+  gap: 12px;
+}
 .np-top {
   display: flex;
-  gap: 10px;
+  gap: 14px;
   align-items: center;
 }
 .np-art {
-  width: 56px;
-  height: 56px;
+  width: 68px;
+  height: 68px;
   flex: none;
-  border-radius: 10px;
+  border-radius: 16px;
   object-fit: cover;
-  background: var(--bg-3);
+  background: color-mix(in srgb, var(--c) 30%, var(--ink));
 }
 .np-meta {
+  flex: 1;
   min-width: 0;
 }
 .np-title {
-  font-size: 15px;
-  font-weight: 600;
+  color: color-mix(in srgb, var(--c) 15%, white);
+  font-size: 16px;
+  font-weight: 700;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .np-artist,
 .np-source {
-  color: var(--muted);
+  color: color-mix(in srgb, var(--c) 60%, white);
   font-size: 12px;
   white-space: nowrap;
   overflow: hidden;
@@ -239,26 +390,15 @@ input[type="checkbox"] {
 }
 .np-source {
   font-size: 11px;
-  opacity: 0.8;
-}
-.np-controls {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 14px;
-  margin: 8px 0 4px;
-}
-.np-controls .icon-btn {
-  width: 36px;
-  height: 36px;
-  color: var(--text);
+  opacity: 0.75;
 }
 .np-play {
-  width: 46px !important;
-  height: 46px !important;
+  width: 48px !important;
+  height: 48px !important;
+  flex: none;
   border-radius: 50% !important;
-  background: var(--text) !important;
-  color: var(--bg-2) !important;
+  background: var(--c) !important;
+  color: var(--ink) !important;
 }
 .np-play:disabled {
   opacity: 0.4;
@@ -268,22 +408,27 @@ input[type="checkbox"] {
   align-items: center;
   gap: 8px;
 }
+.np-progress .icon-btn {
+  width: 30px;
+  height: 30px;
+  color: color-mix(in srgb, var(--c) 15%, white);
+}
 .np-time {
   font-variant-numeric: tabular-nums;
-  color: var(--muted);
+  color: color-mix(in srgb, var(--c) 60%, white);
   font-size: 11px;
-  min-width: 32px;
+  min-width: 30px;
 }
-.np-time:last-child {
+.np-time:nth-last-child(2) {
   text-align: right;
 }
 .np-seek {
   flex: 1;
-  accent-color: var(--accent);
+  accent-color: var(--c);
   height: 16px;
 }
 .np-empty {
-  color: var(--muted);
+  color: color-mix(in srgb, var(--c) 45%, var(--muted));
   font-size: 12px;
 }
 
@@ -393,7 +538,7 @@ input[type="checkbox"] {
 }
 
 /* modal ------------------------------------------------------------------ */
-.card.has-modal {
+.island-body.has-modal {
   min-height: 260px;
   overflow: hidden;
 }
@@ -403,7 +548,7 @@ input[type="checkbox"] {
   display: grid;
   place-items: center;
   background: rgba(10, 11, 15, 0.7);
-  border-radius: 18px;
+  border-radius: 0 0 var(--r) var(--r);
   padding: 12px;
 }
 .modal {

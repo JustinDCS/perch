@@ -41,6 +41,8 @@ export interface RestPill {
   name: string;
   kind: "rest";
   icon?: string;
+  /** #rrggbb colour for this pill's chip and card */
+  accent?: string;
   refreshSeconds: number;
   request: RestRequest;
   display: StatDisplay | ListDisplay;
@@ -52,6 +54,13 @@ export interface NowPlayingPill {
   name: string;
   kind: "now-playing";
   icon?: string;
+  accent?: string;
+}
+
+/** What a pill shows when the island is small: an icon or short label and a value. */
+export interface Chip {
+  icon?: string;
+  text: string;
 }
 
 export type PillManifest = RestPill | NowPlayingPill;
@@ -60,6 +69,8 @@ export type PillManifest = RestPill | NowPlayingPill;
 export interface PillHost {
   reportTone(id: string, tone: Tone): void;
   reportMusic(playing: boolean): void;
+  /** Set (or with null, clear) the chip shown for this pill in the small island. */
+  reportChip(id: string, chip: Chip | null): void;
   /** Ask the user to allow a host; resolves true if they agreed and it was saved. */
   requestHostApproval(host: string): Promise<boolean>;
 }

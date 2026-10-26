@@ -31,7 +31,7 @@ fn place_at_top_centre(app: &AppHandle) {
         return;
     };
     let x = monitor.position().x + (monitor.size().width as i32 - size.width as i32) / 2;
-    let y = monitor.position().y + 12;
+    let y = monitor.position().y;
     let _ = window.set_position(PhysicalPosition::new(x, y));
 }
 

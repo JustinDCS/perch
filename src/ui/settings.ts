@@ -12,6 +12,8 @@ export interface SettingsContext {
   avatarFile: string | null;
   onAvatarChange(file: string | null): void;
   onPillToggle(id: string, enabled: boolean): void;
+  hideWhenQuiet: boolean;
+  onHideWhenQuietChange(value: boolean): void;
   /** Re-read the config folder and rebuild everything. */
   onReload(): Promise<void>;
   /** A secret or approval changed: pills should refresh. */
@@ -28,6 +30,11 @@ function errorList(errors: string[]): HTMLElement {
 
 export function renderSettings(ctx: SettingsContext): HTMLElement {
   const root = h("div", { class: "settings" });
+
+  // ---- behaviour ---------------------------------------------------------------------------
+  const quietBox = h("input", { type: "checkbox", attrs: { "aria-label": "Hide when nothing is happening" } });
+  quietBox.checked = ctx.hideWhenQuiet;
+  quietBox.addEventListener("change", () => ctx.onHideWhenQuietChange(quietBox.checked));
 
   // ---- pills -----------------------------------------------------------------------------
   const disabled = getDisabledPills();
@@ -191,6 +198,11 @@ export function renderSettings(ctx: SettingsContext): HTMLElement {
         );
 
   root.append(
+    section(
+      "Behaviour",
+      h("label", { class: "row" }, quietBox, h("span", { class: "row-main", text: "Shrink to a sliver when nothing is happening" })),
+      h("p", { class: "muted", text: "Move the pointer to the top edge to bring it back. Music and alerts always show." }),
+    ),
     section("Pills", ...pillRows),
     section("Secrets", h("p", { class: "muted", text: "Stored in Windows Credential Manager. Perch never shows them again." }), secretsBody),
     section("Approved hosts", hostsBody),

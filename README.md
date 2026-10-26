@@ -65,6 +65,17 @@ approved-hosts.json   hosts you have allowed (managed by Perch)
 Copy anything from [`examples/`](examples) to get started. `examples/pips/tauri-stars.json` needs no secret.
 Files with mistakes never crash Perch: they are listed with the exact problems under **Settings → Files with problems**.
 
+## The island
+
+Perch hangs from the top edge of your screen like a notch, with the avatar perched on its lower lip:
+
+* **Hidden**: when nothing is happening it shrinks to a sliver with two eyes peeking out (switch this off in the Library).
+* **Small**: while music plays or a pill needs attention it shows one chip per pill (♪ track, ★ value, count).
+* **Home**: move the pointer onto it (or click the avatar to keep it open) to see the full cards. A pill that turns red opens it by itself, and it stays open until you have been over it and left.
+* A line along the lip takes the worst tone: green, amber or coral.
+
+Each pill file may set an `"accent": "#rrggbb"` colour for its chip and card.
+
 ## Pill manifest
 
 ```json
