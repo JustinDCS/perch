@@ -307,10 +307,12 @@ input[type="checkbox"] {
   gap: 8px;
   margin-top: 6px;
   max-height: 520px;
+  overflow-x: hidden;
   overflow-y: auto;
   scrollbar-width: thin;
 }
 .pill {
+  min-width: 0;
   --c: var(--pill-accent, #8fb4ff);
   background: color-mix(in srgb, var(--c) 16%, #14161c);
   border-radius: 22px;
@@ -405,9 +407,12 @@ input[type="checkbox"] {
 }
 .np-player {
   display: grid;
+  /* one column that may shrink, so a very long title is cut off instead of widening the card */
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
 }
 .np-top {
+  min-width: 0;
   display: flex;
   gap: 14px;
   align-items: center;
