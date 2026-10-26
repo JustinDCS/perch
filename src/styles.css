@@ -50,6 +50,8 @@ input[type="checkbox"] {
 }
 .island {
   position: relative;
+  /* never shrink to fit the window: the window is sized to the island, not the other way round */
+  flex: none;
   width: max-content;
   max-width: 452px;
   padding: 0 16px;
