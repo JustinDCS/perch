@@ -73,6 +73,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   let dragging = false;
   let gazeMode = getGazeMode();
   let peeksOn = getPeeks();
+  let playingSources = 0;
   let soundMode: SoundMode = getSoundMode();
   let soundVolume = getSoundVolume();
   const sound = createSoundPlayer(() => ({ mode: soundMode, volume: soundVolume }));
@@ -371,6 +372,14 @@ export async function mountApp(root: HTMLElement): Promise<void> {
         sound.play("alert");
       }
       refresh();
+    },
+    reportSources(count) {
+      // a second app starts playing: it looks from one side to the other
+      if (count > playingSources && count > 1) {
+        avatarView?.glance(-0.9, 0, 500);
+        setTimeout(() => avatarView?.glance(0.9, 0, 500), 550);
+      }
+      playingSources = count;
     },
     reportMusic(playing) {
       if (playing && !musicPlaying) {

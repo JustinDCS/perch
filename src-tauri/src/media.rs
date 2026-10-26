@@ -8,6 +8,15 @@
 
 use serde::Serialize;
 
+/// One app that is reporting a media session to Windows.
+#[derive(Debug, Clone, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MediaSource {
+    /// The app's id, as Windows reports it (also what `source` arguments refer to).
+    pub id: String,
+    pub playing: bool,
+}
+
 #[derive(Debug, Clone, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MediaState {
@@ -26,11 +35,13 @@ pub struct MediaState {
     pub can_seek: bool,
     /// Changes whenever the track changes; the UI uses it to know when to refetch artwork.
     pub track_key: String,
+    /// Every app with a media session, so the UI can show that more than one is playing.
+    pub sources: Vec<MediaSource>,
 }
 
 #[cfg(windows)]
 mod imp {
-    use super::MediaState;
+    use super::{MediaSource, MediaState};
     use base64::Engine;
     use std::time::{SystemTime, UNIX_EPOCH};
     use windows::Media::Control::{
@@ -55,13 +66,57 @@ mod imp {
         let _ = unsafe { RoInitialize(RO_INIT_MULTITHREADED) };
     }
 
-    fn current_session() -> Result<Option<Session>, String> {
-        let manager = Manager::RequestAsync()
-            .map_err(es)?
-            .get()
-            .map_err(es)?;
-        // An Err here means "no current session".
-        Ok(manager.GetCurrentSession().ok())
+    fn manager() -> Result<Manager, String> {
+        Manager::RequestAsync().map_err(es)?.get().map_err(es)
+    }
+
+    fn app_id(session: &Session) -> String {
+        session
+            .SourceAppUserModelId()
+            .map(|s| s.to_string())
+            .unwrap_or_default()
+    }
+
+    /// The session the user chose (by app id) if it is still there, otherwise the one Windows
+    /// considers current. An Err from `GetCurrentSession` means "no current session".
+    fn pick_session(manager: &Manager, source: Option<&str>) -> Option<Session> {
+        if let Some(want) = source {
+            if let Ok(sessions) = manager.GetSessions() {
+                let count = sessions.Size().unwrap_or(0);
+                for i in 0..count {
+                    if let Ok(session) = sessions.GetAt(i) {
+                        if app_id(&session) == want {
+                            return Some(session);
+                        }
+                    }
+                }
+            }
+        }
+        manager.GetCurrentSession().ok()
+    }
+
+    /// Every media session and whether it is playing. Best effort: errors give a shorter list.
+    fn list_sources(manager: &Manager) -> Vec<MediaSource> {
+        let mut out = Vec::new();
+        let Ok(sessions) = manager.GetSessions() else {
+            return out;
+        };
+        let count = sessions.Size().unwrap_or(0);
+        for i in 0..count {
+            let Ok(session) = sessions.GetAt(i) else {
+                continue;
+            };
+            let playing = session
+                .GetPlaybackInfo()
+                .and_then(|info| info.PlaybackStatus())
+                .map(|status| status == Status::Playing)
+                .unwrap_or(false);
+            out.push(MediaSource {
+                id: app_id(&session),
+                playing,
+            });
+        }
+        out
     }
 
     fn now_windows_ticks() -> i64 {
@@ -72,10 +127,15 @@ mod imp {
         since_unix + WINDOWS_TO_UNIX_TICKS
     }
 
-    pub fn read_state() -> Result<MediaState, String> {
+    pub fn read_state(source: Option<&str>) -> Result<MediaState, String> {
         init();
-        let Some(session) = current_session()? else {
-            return Ok(MediaState::default());
+        let manager = manager()?;
+        let sources = list_sources(&manager);
+        let Some(session) = pick_session(&manager, source) else {
+            return Ok(MediaState {
+                sources,
+                ..MediaState::default()
+            });
         };
 
         let props = session
@@ -86,10 +146,7 @@ mod imp {
         let title = props.Title().map(|s| s.to_string()).unwrap_or_default();
         let artist = props.Artist().map(|s| s.to_string()).unwrap_or_default();
         let album = props.AlbumTitle().map(|s| s.to_string()).unwrap_or_default();
-        let app = session
-            .SourceAppUserModelId()
-            .map(|s| s.to_string())
-            .unwrap_or_default();
+        let app = app_id(&session);
 
         let info = session.GetPlaybackInfo().map_err(es)?;
         let playing = info.PlaybackStatus().map_err(es)? == Status::Playing;
@@ -137,13 +194,14 @@ mod imp {
             can_next,
             can_previous,
             can_seek,
+            sources,
         })
     }
 
     /// Album art as a `data:` URL, or `None` if the app provides none.
-    pub fn read_thumbnail() -> Result<Option<String>, String> {
+    pub fn read_thumbnail(source: Option<&str>) -> Result<Option<String>, String> {
         init();
-        let Some(session) = current_session()? else {
+        let Some(session) = pick_session(&manager()?, source) else {
             return Ok(None);
         };
         let props = session
@@ -179,9 +237,9 @@ mod imp {
         Ok(Some(format!("data:{mime};base64,{encoded}")))
     }
 
-    pub fn control(action: &str, position_ms: Option<u64>) -> Result<(), String> {
+    pub fn control(action: &str, position_ms: Option<u64>, source: Option<&str>) -> Result<(), String> {
         init();
-        let Some(session) = current_session()? else {
+        let Some(session) = pick_session(&manager()?, source) else {
             return Err("nothing is playing".into());
         };
         match action {
@@ -219,36 +277,36 @@ mod imp {
 mod imp {
     use super::MediaState;
 
-    pub fn read_state() -> Result<MediaState, String> {
+    pub fn read_state(_source: Option<&str>) -> Result<MediaState, String> {
         Ok(MediaState::default())
     }
 
-    pub fn read_thumbnail() -> Result<Option<String>, String> {
+    pub fn read_thumbnail(_source: Option<&str>) -> Result<Option<String>, String> {
         Ok(None)
     }
 
-    pub fn control(_action: &str, _position_ms: Option<u64>) -> Result<(), String> {
+    pub fn control(_action: &str, _position_ms: Option<u64>, _source: Option<&str>) -> Result<(), String> {
         Err("now-playing controls are only available on Windows".into())
     }
 }
 
 #[tauri::command]
-pub async fn media_get_state() -> Result<MediaState, String> {
-    tauri::async_runtime::spawn_blocking(imp::read_state)
+pub async fn media_get_state(source: Option<String>) -> Result<MediaState, String> {
+    tauri::async_runtime::spawn_blocking(move || imp::read_state(source.as_deref()))
         .await
         .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
-pub async fn media_get_thumbnail() -> Result<Option<String>, String> {
-    tauri::async_runtime::spawn_blocking(imp::read_thumbnail)
+pub async fn media_get_thumbnail(source: Option<String>) -> Result<Option<String>, String> {
+    tauri::async_runtime::spawn_blocking(move || imp::read_thumbnail(source.as_deref()))
         .await
         .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
-pub async fn media_control(action: String, position_ms: Option<u64>) -> Result<(), String> {
-    tauri::async_runtime::spawn_blocking(move || imp::control(&action, position_ms))
+pub async fn media_control(action: String, position_ms: Option<u64>, source: Option<String>) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || imp::control(&action, position_ms, source.as_deref()))
         .await
         .map_err(|e| e.to_string())?
 }

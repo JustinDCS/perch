@@ -433,6 +433,35 @@ input[type="checkbox"] {
   font-size: 11px;
   opacity: 0.75;
 }
+.np-source {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.np-source-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.np-switch {
+  flex: none;
+  padding: 1px 8px;
+  border: 1px solid color-mix(in srgb, var(--c) 45%, transparent);
+  border-radius: 999px;
+  background: transparent;
+  color: color-mix(in srgb, var(--c) 70%, white);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.np-switch[data-busy="true"] {
+  background: color-mix(in srgb, var(--c) 28%, transparent);
+  color: white;
+}
+.np-switch:hover {
+  background: color-mix(in srgb, var(--c) 40%, transparent);
+}
 .np-play {
   width: 48px !important;
   height: 48px !important;

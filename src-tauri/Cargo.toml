@@ -24,6 +24,7 @@ keyring = { version = "3", features = ["windows-native"] }
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.61", features = [
     "Foundation",
+    "Foundation_Collections",
     "Media_Control",
     "Storage_Streams",
     "Win32_System_WinRT",

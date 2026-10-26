@@ -85,6 +85,10 @@ The scripted poses sit under a small "alive" layer (`src/avatar/life.ts`): the e
 
 **Reactions.** It responds to things: it hops when music starts or the track changes (and glances at the card), is startled when you grab it and squashes when you drop it, and leans back with wide eyes just before an alert opens. While the island is hidden it occasionally slides out, looks left and right, winks and slides back (Library → Behaviour switches this off).
 
+## More than one app playing
+
+Perch lists every app that reports media to Windows. When there is more than one, the now-playing card shows a small badge next to the app name ("+1 playing" while another app is playing, otherwise "2 sources") and the small chip gets a "+1". Click the badge to switch to the next app; the controls, progress and artwork then follow that app. Your pick lasts until that app closes, or until it was playing, paused, and something else is playing. When a second app starts, the avatar looks from side to side.
+
 ## Sounds
 
 Small synthesised blips (no audio files): a two-chirp "hey" when a pill turns red, a tick when the island opens, a pop on a new track, a little arpeggio when music starts, a squeak and a thud when you grab and drop it, and tiny sounds for the peek, the wink, falling asleep and waking. Library → Sounds sets *All sounds*, *Alerts only* or *Off* and the volume (default 35%). Each sound has a cooldown so nothing repeats rapidly. The window is allowed to play audio without a click first (`additionalBrowserArgs` in `tauri.conf.json`).

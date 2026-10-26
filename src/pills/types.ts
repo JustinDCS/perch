@@ -69,6 +69,8 @@ export type PillManifest = RestPill | NowPlayingPill;
 export interface PillHost {
   reportTone(id: string, tone: Tone): void;
   reportMusic(playing: boolean): void;
+  /** How many apps are playing media right now (so the avatar can notice a second one). */
+  reportSources(playing: number): void;
   /** Set (or with null, clear) the chip shown for this pill in the small island. */
   reportChip(id: string, chip: Chip | null): void;
   /** Ask the user to allow a host; resolves true if they agreed and it was saved. */

@@ -18,6 +18,8 @@ export interface MediaState {
   canPrevious: boolean;
   canSeek: boolean;
   trackKey: string;
+  /** every app with a media session */
+  sources: { id: string; playing: boolean }[];
 }
 
 export type MediaAction = "playPause" | "next" | "previous" | "seek";
@@ -36,9 +38,10 @@ export interface UserFile {
 }
 
 export interface Ipc {
-  mediaState(): Promise<MediaState>;
-  mediaThumbnail(): Promise<string | null>;
-  mediaControl(action: MediaAction, positionMs?: number): Promise<void>;
+  /** `source` is an app id to look at instead of the one Windows considers current. */
+  mediaState(source?: string): Promise<MediaState>;
+  mediaThumbnail(source?: string): Promise<string | null>;
+  mediaControl(action: MediaAction, positionMs?: number, source?: string): Promise<void>;
   fetchJson(req: FetchRequest): Promise<unknown>;
   approvedHosts(): Promise<string[]>;
   approveHost(host: string): Promise<void>;
@@ -54,9 +57,9 @@ export interface Ipc {
 export const inTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
 const real: Ipc = {
-  mediaState: () => invoke<MediaState>("media_get_state"),
-  mediaThumbnail: () => invoke<string | null>("media_get_thumbnail"),
-  mediaControl: (action, positionMs) => invoke("media_control", { action, positionMs }),
+  mediaState: (source) => invoke<MediaState>("media_get_state", { source }),
+  mediaThumbnail: (source) => invoke<string | null>("media_get_thumbnail", { source }),
+  mediaControl: (action, positionMs, source) => invoke("media_control", { action, positionMs, source }),
   fetchJson: (req) => invoke("fetch_json", { req }),
   approvedHosts: () => invoke<string[]>("approved_hosts"),
   approveHost: (host) => invoke("approve_host", { host }),
@@ -100,43 +103,51 @@ function createMock(): Ipc {
     avatars: [],
   };
 
-  const track = { title: "PPAPTEKK - Super Slowed", artist: "DIPIENS, HRXSTAL", durationMs: 111_000 };
-  let playing = true;
-  let positionMs = 23_000;
+  // two pretend apps; add ?mock2 to the address to have the second one playing as well
+  const mockApps = {
+    "Spotify.exe": { title: "PPAPTEKK - Super Slowed", artist: "DIPIENS, HRXSTAL", durationMs: 111_000, playing: true, positionMs: 23_000 },
+    "chrome.exe": { title: "lofi hip hop radio", artist: "Lofi Girl", durationMs: 3_600_000, playing: typeof location !== "undefined" && location.search.includes("mock2"), positionMs: 600_000 },
+  };
+  type MockId = keyof typeof mockApps;
+  const pick = (source?: string): MockId => (source && source in mockApps ? (source as MockId) : "Spotify.exe");
   let last = Date.now();
   const tick = () => {
     const now = Date.now();
-    if (playing) positionMs = Math.min(track.durationMs, positionMs + (now - last));
+    for (const app of Object.values(mockApps)) if (app.playing) app.positionMs = Math.min(app.durationMs, app.positionMs + (now - last));
     last = now;
   };
 
   return {
-    async mediaState() {
+    async mediaState(source) {
       tick();
+      const id = pick(source);
+      const app = mockApps[id];
       return {
         available: true,
-        app: "Spotify.exe",
-        title: track.title,
-        artist: track.artist,
+        app: id,
+        title: app.title,
+        artist: app.artist,
         album: "",
-        playing,
-        positionMs,
-        durationMs: track.durationMs,
+        playing: app.playing,
+        positionMs: app.positionMs,
+        durationMs: app.durationMs,
         canPlayPause: true,
         canNext: true,
         canPrevious: true,
         canSeek: true,
-        trackKey: `mock|${track.title}`,
+        trackKey: `mock|${app.title}`,
+        sources: Object.entries(mockApps).map(([name, a]) => ({ id: name, playing: a.playing })),
       };
     },
     async mediaThumbnail() {
       return null;
     },
-    async mediaControl(action, ms) {
+    async mediaControl(action, ms, source) {
       tick();
-      if (action === "playPause") playing = !playing;
-      if (action === "seek" && ms !== undefined) positionMs = ms;
-      if (action === "next" || action === "previous") positionMs = 0;
+      const app = mockApps[pick(source)];
+      if (action === "playPause") app.playing = !app.playing;
+      if (action === "seek" && ms !== undefined) app.positionMs = ms;
+      if (action === "next" || action === "previous") app.positionMs = 0;
     },
     async fetchJson(req) {
       const host = new URL(req.url).host;
