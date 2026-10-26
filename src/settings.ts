@@ -142,3 +142,23 @@ export function setGazeMode(mode: GazeMode): void {
     // ignore
   }
 }
+
+// ---- the avatar pokes its head out now and then while the island is hidden --------------------
+
+const PEEK_KEY = "perch.peeks";
+
+export function getPeeks(): boolean {
+  try {
+    return localStorage.getItem(PEEK_KEY) !== "0";
+  } catch {
+    return true;
+  }
+}
+
+export function setPeeks(value: boolean): void {
+  try {
+    localStorage.setItem(PEEK_KEY, value ? "1" : "0");
+  } catch {
+    // ignore
+  }
+}

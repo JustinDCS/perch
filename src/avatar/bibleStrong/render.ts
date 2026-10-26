@@ -2,7 +2,7 @@
 // 2D approximation: the Studio draws a lit 3D shape, here the head turn is shown by sliding
 // and squeezing the face across the body, which reads well at 48 pixels.
 
-import { BlinkPlanner, Gaze, breath, interestFor, noise } from "../life";
+import { BlinkPlanner, Gaze, NEUTRAL_IMPULSE, Reactions, breath, interestFor, noise, type Impulse } from "../life";
 import type { AvatarView, ViewState } from "../renderer";
 import { ease, locate, mixPose, pickAnimation, poseOf, type Pose } from "./pose";
 import type { BsAnimation, BsAvatar, BsSurface } from "./schema";
@@ -124,6 +124,7 @@ export function createBibleStrongView(avatar: BsAvatar): AvatarView {
   let plannedDur = 0;
   const planner = new BlinkPlanner();
   const gaze = new Gaze();
+  const reactions = new Reactions();
   let stateName: ViewState = "idle";
   // the scripted loops run on their own clock, which speeds up and slows down a little
   let clock = 0;
@@ -230,18 +231,20 @@ export function createBibleStrongView(avatar: BsAvatar): AvatarView {
     const faceX = yaw * faceRadius * 0.6 + eyeJitterX + (look.x * 0.42 + noise(sec * 0.35, 11) * 0.06 * drift) * faceRadius;
     const faceY = -pitch * faceRadius * 0.6 + eyeJitterY + (look.y * 0.34 + noise(sec * 0.3, 17) * 0.05 * drift) * faceRadius;
     const squash = Math.max(0.55, Math.cos(rad(pose.headY))) * (1 - 0.18 * Math.abs(look.x));
-    const rise = reduceMotion ? { sx: 1, sy: 1 } : breath(sec, stateName === "asleep");
+    const breathing = reduceMotion ? { sx: 1, sy: 1 } : breath(sec, stateName === "asleep");
+    const react: Impulse = reduceMotion ? NEUTRAL_IMPULSE : reactions.sample(now);
+    const rise = { sx: breathing.sx * react.sx, sy: breathing.sy * react.sy };
     const half = (pose.spacing * s * squash) / 2;
 
-    const key = [rise.sy, look.x, look.y, pose.bodyColor, pose.eyeColor, faceX, faceY, half, pose.headZ, closed, bodyX, bodyY, pose.left.height, pose.right.height, pose.left.angle, pose.right.angle]
+    const key = [rise.sy, rise.sx, react.dy, react.eyeScale, react.openLeft, react.openRight, react.roll, look.x, look.y, pose.bodyColor, pose.eyeColor, faceX, faceY, half, pose.headZ, closed, bodyX, bodyY, pose.left.height, pose.right.height, pose.left.angle, pose.right.angle]
       .map((v) => (typeof v === "number" ? v.toFixed(2) : v))
       .join("|");
     if (key === lastKey) return;
     lastKey = key;
 
     // breathing grows the body upwards from its base
-    character.setAttribute("transform", `translate(50 88) scale(${num(rise.sx)} ${num(rise.sy)}) translate(-50 -88)`);
-    faceGroup.setAttribute("transform", `translate(${num(50 + bodyX)} ${num(50 + bodyY)}) rotate(${num(pose.headZ * 0.6 + look.x * 3)})`);
+    character.setAttribute("transform", `translate(50 ${num(88 + react.dy)}) scale(${num(rise.sx)} ${num(rise.sy)}) translate(-50 -88)`);
+    faceGroup.setAttribute("transform", `translate(${num(50 + bodyX)} ${num(50 + bodyY)}) rotate(${num(pose.headZ * 0.6 + look.x * 3 + react.roll)})`);
     bodyGroup.setAttribute("transform", `translate(${num(50 + bodyX)} ${num(50 + bodyY)})`);
     for (const shape of bodyShapes) {
       shape.setAttribute("fill", pose.bodyColor ?? base.body);
@@ -249,8 +252,8 @@ export function createBibleStrongView(avatar: BsAvatar): AvatarView {
     }
     leftEye.setAttribute("fill", pose.eyeColor ?? base.eyes);
     rightEye.setAttribute("fill", pose.eyeColor ?? base.eyes);
-    setEye(leftEye, pose.left, faceX - half + pose.left.x * s * squash, faceY + pose.left.y * s, squash, closed);
-    setEye(rightEye, pose.right, faceX + half + pose.right.x * s * squash, faceY + pose.right.y * s, squash, closed);
+    setEye(leftEye, pose.left, faceX - half + pose.left.x * s * squash, faceY + pose.left.y * s, squash * react.eyeScale, closed * react.openLeft * react.eyeScale);
+    setEye(rightEye, pose.right, faceX + half + pose.right.x * s * squash, faceY + pose.right.y * s, squash * react.eyeScale, closed * react.openRight * react.eyeScale);
   }
 
   // 30 frames a second is plenty for a face this small, and keeps the idle cost down
@@ -291,6 +294,12 @@ export function createBibleStrongView(avatar: BsAvatar): AvatarView {
     },
     lookAway() {
       gaze.away();
+    },
+    glance(x, y, ms) {
+      gaze.glance(x, y, ms, performance.now());
+    },
+    react(kind) {
+      if (!reduceMotion) reactions.start(kind, performance.now());
     },
     destroy() {
       destroyed = true;

@@ -140,3 +140,97 @@ describe("interestFor", () => {
     expect(interestFor("idle")).toBe(1);
   });
 });
+
+import { NEUTRAL_IMPULSE, Reactions, nextPeekDelay, spring } from "./life";
+
+describe("spring", () => {
+  it("starts at 1 and dies away", () => {
+    expect(spring(0, 3, 6)).toBe(1);
+    expect(Math.abs(spring(2, 3, 6))).toBeLessThan(0.001);
+  });
+});
+
+describe("Reactions", () => {
+  it("is neutral when nothing is playing", () => {
+    expect(new Reactions().sample(1000)).toEqual(NEUTRAL_IMPULSE);
+  });
+  it.each(["startle", "squash", "perk", "anticipate", "wink"] as const)("%s finishes and returns to neutral", (kind) => {
+    const r = new Reactions();
+    r.start(kind, 0);
+    expect(r.busy).toBe(true);
+    expect(r.sample(5000)).toEqual(NEUTRAL_IMPULSE);
+    expect(r.busy).toBe(false);
+  });
+  it.each(["startle", "squash", "perk", "anticipate", "wink"] as const)("%s stays within sane bounds the whole way", (kind) => {
+    const r = new Reactions();
+    r.start(kind, 0);
+    for (let t = 0; t < 1100; t += 8) {
+      const i = r.sample(t);
+      expect(i.sy).toBeGreaterThan(0.8);
+      expect(i.sy).toBeLessThan(1.25);
+      expect(i.sx).toBeGreaterThan(0.85);
+      expect(i.sx).toBeLessThan(1.2);
+      expect(i.eyeScale).toBeGreaterThanOrEqual(1);
+      expect(i.eyeScale).toBeLessThan(1.4);
+      expect(i.openLeft).toBeGreaterThan(0);
+      expect(i.openRight).toBeGreaterThan(0);
+      expect(Math.abs(i.dy)).toBeLessThanOrEqual(4.01);
+      expect(Math.abs(i.roll)).toBeLessThanOrEqual(6.01);
+    }
+  });
+  it("squash starts flat and stretch starts tall", () => {
+    const a = new Reactions();
+    a.start("squash", 0);
+    expect(a.sample(1).sy).toBeLessThan(0.9);
+    const b = new Reactions();
+    b.start("startle", 0);
+    expect(b.sample(1).sy).toBeGreaterThan(1.1);
+  });
+  it("a wink shuts one eye and leaves the other open", () => {
+    const r = new Reactions();
+    r.start("wink", 0);
+    const i = r.sample(200);
+    expect(i.openRight).toBeLessThan(0.2);
+    expect(i.openLeft).toBeGreaterThanOrEqual(1);
+  });
+  it("restarting a reaction does not stack it", () => {
+    const r = new Reactions();
+    r.start("squash", 0);
+    r.start("squash", 400);
+    const i = r.sample(401);
+    expect(i.sy).toBeGreaterThan(0.8);
+  });
+  it("combines different reactions", () => {
+    const r = new Reactions();
+    r.start("wink", 0);
+    r.start("perk", 0);
+    const i = r.sample(200);
+    expect(i.openRight).toBeLessThan(0.2);
+    expect(i.eyeScale).toBeGreaterThanOrEqual(1);
+  });
+});
+
+describe("Gaze.glance", () => {
+  it("looks where told for a moment, over the pointer, then lets go", () => {
+    const gaze = new Gaze(seeded(9));
+    gaze.look(-1, 0, 0);
+    gaze.glance(1, 0, 800, 0);
+    for (let t = 0; t < 700; t += 16) gaze.step(t, 16, { amount: 1 });
+    expect(gaze.x).toBeGreaterThan(0.8);
+    for (let t = 800; t < 2500; t += 16) gaze.step(t, 16, { amount: 1 });
+    expect(gaze.x).toBeLessThan(-0.8); // back to the pointer
+  });
+  it("is ignored while asleep", () => {
+    const gaze = new Gaze(seeded(10));
+    gaze.glance(1, 0, 800, 0);
+    for (let t = 0; t < 700; t += 16) gaze.step(t, 16, { amount: 0 });
+    expect(gaze.x).toBeCloseTo(0, 2);
+  });
+});
+
+describe("nextPeekDelay", () => {
+  it("is between 40 and 110 seconds", () => {
+    expect(nextPeekDelay(() => 0)).toBe(40_000);
+    expect(nextPeekDelay(() => 0.999999)).toBeLessThan(110_000);
+  });
+});

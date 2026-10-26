@@ -2,6 +2,7 @@
 // already been range- and format-checked by validateAvatar, and nothing is ever concatenated
 // into markup, so an avatar file cannot inject script or foreign elements.
 
+import type { ReactionKind } from "./life";
 import type { Avatar, AvatarStateName } from "./schema";
 
 /** The states an avatar view can show. "asleep" is for long quiet spells; Perch's older avatar format has no such look, so it shows idle. */
@@ -24,6 +25,10 @@ export interface AvatarView {
   lookAt(x: number, y: number): void;
   /** Nothing to look at: go back to glancing around on its own. */
   lookAway(): void;
+  /** Look at (x, y) on purpose for a moment, whatever the pointer is doing. */
+  glance(x: number, y: number, ms: number): void;
+  /** A short springy response to something that happened. */
+  react(kind: ReactionKind): void;
   destroy(): void;
 }
 
@@ -110,6 +115,8 @@ export function createAvatarView(avatar: Avatar): AvatarView {
     // Perch's older avatar format has no head to turn
     lookAt() {},
     lookAway() {},
+    glance() {},
+    react() {},
     destroy() {
       if (blinkTimer) clearTimeout(blinkTimer);
       if (blinkReset) clearTimeout(blinkReset);

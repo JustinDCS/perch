@@ -91,7 +91,13 @@ export class Gaze {
   private pointer: { x: number; y: number } | null = null;
   private pointerAt = -Infinity;
   private wanderUntil = 0;
+  private glanceAt: { x: number; y: number; until: number } | null = null;
   constructor(private readonly rand: Rand = Math.random) {}
+
+  /** Look somewhere on purpose for `ms`, whatever the pointer is doing. */
+  glance(x: number, y: number, ms: number, now: number): void {
+    this.glanceAt = { x: Math.max(-1, Math.min(1, x)), y: Math.max(-1, Math.min(1, y)), until: now + ms };
+  }
 
   /** The pointer is at (x, y) relative to the avatar, each already clamped to [-1, 1]. */
   look(x: number, y: number, now: number): void {
@@ -105,7 +111,11 @@ export class Gaze {
 
   step(now: number, dtMs: number, opts: GazeOptions): { x: number; y: number } {
     const amount = Math.max(0, Math.min(1, opts.amount));
-    if (this.pointer && now - this.pointerAt < POINTER_INTEREST_MS) {
+    if (this.glanceAt && now < this.glanceAt.until) {
+      this.tx = this.glanceAt.x * amount;
+      this.ty = this.glanceAt.y * amount;
+      this.wanderUntil = this.glanceAt.until;
+    } else if (this.pointer && now - this.pointerAt < POINTER_INTEREST_MS) {
       this.tx = this.pointer.x * amount;
       this.ty = this.pointer.y * amount;
       this.wanderUntil = now;
@@ -133,4 +143,116 @@ export function interestFor(state: string): number {
     default:
       return 1;
   }
+}
+
+// ---- reactions: short, springy responses to things that happen --------------------------------
+
+export type ReactionKind = "startle" | "squash" | "perk" | "anticipate" | "wink";
+
+/** What the reactions add to the avatar right now. Neutral is all 1s and 0s. */
+export interface Impulse {
+  /** body scale */
+  sx: number;
+  sy: number;
+  /** body lift in avatar units (negative is up) */
+  dy: number;
+  /** eye size multiplier, and how open each eye is (0 shut, 1 normal) */
+  eyeScale: number;
+  openLeft: number;
+  openRight: number;
+  /** extra head tilt in degrees */
+  roll: number;
+}
+
+export const NEUTRAL_IMPULSE: Impulse = { sx: 1, sy: 1, dy: 0, eyeScale: 1, openLeft: 1, openRight: 1, roll: 0 };
+
+const DURATION_S: Record<ReactionKind, number> = { startle: 0.9, squash: 1.0, perk: 0.9, anticipate: 0.95, wink: 0.55 };
+
+/** A damped wobble that starts at 1, swings through 0 and dies away. */
+export function spring(seconds: number, hertz: number, damping: number): number {
+  return Math.exp(-damping * seconds) * Math.cos(seconds * hertz * Math.PI * 2);
+}
+
+function one(kind: ReactionKind, t: number): Impulse {
+  const out = { ...NEUTRAL_IMPULSE };
+  switch (kind) {
+    case "startle": {
+      // grabbed: shoots up, eyes go wide, then wobbles back
+      const a = spring(t, 3.2, 6);
+      out.sy = 1 + 0.14 * a;
+      out.sx = 1 - 0.08 * a;
+      out.eyeScale = 1 + 0.3 * a;
+      out.dy = -3 * Math.max(0, a);
+      break;
+    }
+    case "squash": {
+      // dropped: lands flat, then bounces back up
+      const a = spring(t, 2.6, 5.5);
+      out.sy = 1 - 0.16 * a;
+      out.sx = 1 + 0.12 * a;
+      break;
+    }
+    case "perk": {
+      // something nice happened: a little hop
+      const a = spring(t, 3, 6);
+      out.sy = 1 + 0.08 * a;
+      out.eyeScale = 1 + 0.15 * a;
+      out.dy = -4 * Math.max(0, 1 - Math.abs(1 - 2 * Math.min(1, t / 0.35)));
+      break;
+    }
+    case "anticipate": {
+      // trouble ahead: lean back and widen the eyes, then pop up
+      const lean = t < 0.3 ? -0.07 * (t / 0.3) : -0.07 * Math.exp(-(t - 0.3) * 10);
+      const pop = t < 0.3 ? 0 : 0.12 * Math.exp(-6 * (t - 0.3)) * Math.sin((t - 0.3) * 2.8 * Math.PI * 2);
+      out.sy = 1 + lean + pop;
+      out.sx = 1 - 0.5 * (lean + pop);
+      out.eyeScale = 1 + 0.25 * Math.min(1, t / 0.3) * Math.exp(-Math.max(0, t - 0.3) * 3);
+      break;
+    }
+    case "wink": {
+      const c = t < 0.12 ? t / 0.12 : t < 0.3 ? 1 : t < 0.45 ? 1 - (t - 0.3) / 0.15 : 0;
+      out.openRight = 1 - 0.92 * c;
+      out.openLeft = 1 + 0.08 * c;
+      out.roll = 6 * c;
+      out.dy = -1 * c;
+      break;
+    }
+  }
+  return out;
+}
+
+/** Keeps the reactions that are playing and adds them up. */
+export class Reactions {
+  private active: { kind: ReactionKind; start: number }[] = [];
+
+  start(kind: ReactionKind, now: number): void {
+    // the same reaction restarts rather than stacking
+    this.active = this.active.filter((r) => r.kind !== kind);
+    this.active.push({ kind, start: now });
+  }
+
+  get busy(): boolean {
+    return this.active.length > 0;
+  }
+
+  sample(now: number): Impulse {
+    this.active = this.active.filter((r) => (now - r.start) / 1000 < DURATION_S[r.kind]);
+    const total = { ...NEUTRAL_IMPULSE };
+    for (const r of this.active) {
+      const i = one(r.kind, Math.max(0, (now - r.start) / 1000));
+      total.sx *= i.sx;
+      total.sy *= i.sy;
+      total.dy += i.dy;
+      total.eyeScale = Math.max(total.eyeScale, i.eyeScale);
+      total.openLeft = Math.min(total.openLeft, i.openLeft);
+      total.openRight = Math.min(total.openRight, i.openRight);
+      total.roll += i.roll;
+    }
+    return total;
+  }
+}
+
+/** Milliseconds until the avatar next pokes its head out while the island is hidden. */
+export function nextPeekDelay(rand: Rand = Math.random): number {
+  return 40_000 + rand() * 70_000;
 }

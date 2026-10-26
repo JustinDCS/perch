@@ -14,6 +14,8 @@ export interface SettingsContext {
   onPillToggle(id: string, enabled: boolean): void;
   hideWhenQuiet: boolean;
   onHideWhenQuietChange(value: boolean): void;
+  peeks: boolean;
+  onPeeksChange(value: boolean): void;
   gazeMode: GazeMode;
   onGazeModeChange(mode: GazeMode): void;
   openDelayMs: number;
@@ -41,6 +43,10 @@ export function renderSettings(ctx: SettingsContext): HTMLElement {
   const quietBox = h("input", { type: "checkbox", attrs: { "aria-label": "Hide when nothing is happening" } });
   quietBox.checked = ctx.hideWhenQuiet;
   quietBox.addEventListener("change", () => ctx.onHideWhenQuietChange(quietBox.checked));
+
+  const peekBox = h("input", { type: "checkbox", attrs: { "aria-label": "Peek out and wink now and then" } });
+  peekBox.checked = ctx.peeks;
+  peekBox.addEventListener("change", () => ctx.onPeeksChange(peekBox.checked));
 
   const gazeSelect = h("select", { class: "input", attrs: { "aria-label": "Eyes follow the pointer" } });
   for (const g of GAZE_MODES) gazeSelect.append(h("option", { text: g.label, value: g.mode }));
@@ -219,6 +225,7 @@ export function renderSettings(ctx: SettingsContext): HTMLElement {
       h("label", { class: "row" }, quietBox, h("span", { class: "row-main", text: "Shrink to a sliver when nothing is happening" })),
       h("p", { class: "muted", text: "Rest the pointer on it to bring it back. Music and alerts always show." }),
       h("label", { class: "row" }, h("span", { class: "row-main", text: "Open after resting the pointer" }), delaySelect),
+      h("label", { class: "row" }, peekBox, h("span", { class: "row-main", text: "Peek out and wink now and then while hidden" })),
       h("label", { class: "row" }, h("span", { class: "row-main", text: "Eyes follow the pointer" }), gazeSelect),
       h("p", { class: "muted", text: "Drag the avatar to move Perch along the top of any screen." }),
       h("div", { class: "row" }, h("button", { class: "btn", text: "Centre on this screen", on: { click: () => ctx.onResetPosition() } })),

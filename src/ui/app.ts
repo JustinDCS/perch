@@ -9,6 +9,7 @@ import {
   type Monitor,
 } from "@tauri-apps/api/window";
 import { createView } from "../avatar/any";
+import { nextPeekDelay } from "../avatar/life";
 import type { AvatarView } from "../avatar/renderer";
 import { loadConfig, resolveAvatar, type Config } from "../config";
 import { inTauri, ipc } from "../ipc";
@@ -22,11 +23,13 @@ import {
   getGazeMode,
   getHideWhenQuiet,
   getOpenDelay,
+  getPeeks,
   getPlacement,
   setAvatarFile,
   setGazeMode,
   setHideWhenQuiet,
   setOpenDelay,
+  setPeeks,
   setPillEnabled,
   setPlacement,
 } from "../settings";
@@ -36,7 +39,7 @@ import { confirmDialog } from "./modal";
 import { fracForCentre, monitorAt, monitorKey, resolvePlacement, windowOrigin, type MonitorBox } from "./placement";
 import { renderSettings } from "./settings";
 
-type Mode = "hidden" | "small" | "home";
+type Mode = "hidden" | "peek" | "small" | "home";
 
 const LEAVE_DELAY_MS = 600;
 /** how far the pointer must travel on the avatar before it counts as a drag, not a click */
@@ -63,6 +66,12 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   let openDelay = getOpenDelay();
   let dragging = false;
   let gazeMode = getGazeMode();
+  let peeksOn = getPeeks();
+  // the hidden avatar sometimes slides out, looks around, winks and slides back
+  type Peek = "off" | "in" | "hold" | "out";
+  let peek: Peek = "off";
+  let peekTimers: ReturnType<typeof setTimeout>[] = [];
+  let peekSchedule: ReturnType<typeof setTimeout> | undefined;
 
   // ---- layout ------------------------------------------------------------------------------
   const avatarSlot = h("div", { class: "avatar-slot" });
@@ -160,13 +169,67 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     return worst;
   }
 
-  function currentMode(): Mode {
-    if (dragging) return island.dataset.mode as Mode;
+  function baseMode(): Mode {
     if (view === "settings" || modalOpen || pinned || alertOpen || hovering) return "home";
     const worst = worstTone();
     const active = musicPlaying || TONE_RANK[worst] >= TONE_RANK.warn;
     if (hideWhenQuiet && !active) return "hidden";
     return chips.size > 0 ? "small" : hideWhenQuiet ? "hidden" : "small";
+  }
+
+  function currentMode(): Mode {
+    if (dragging) return island.dataset.mode as Mode;
+    const mode = baseMode();
+    if (peek !== "off") {
+      if (mode === "hidden") return "peek";
+      cancelPeek(); // something happened: no time for games
+    }
+    return mode;
+  }
+
+  function cancelPeek(): void {
+    for (const t of peekTimers) clearTimeout(t);
+    peekTimers = [];
+    peek = "off";
+    island.dataset.peek = "off";
+  }
+
+  function schedulePeek(): void {
+    clearTimeout(peekSchedule);
+    if (!peeksOn) return;
+    peekSchedule = setTimeout(startPeek, nextPeekDelay());
+  }
+
+  function startPeek(): void {
+    if (!peeksOn || peek !== "off" || dragging || asleep || document.hidden || baseMode() !== "hidden") {
+      schedulePeek();
+      return;
+    }
+    const at = (ms: number, fn: () => void) => peekTimers.push(setTimeout(fn, ms));
+    const set = (next: Peek) => {
+      peek = next;
+      island.dataset.peek = next;
+    };
+    set("in");
+    refresh();
+    at(450, () => {
+      set("hold");
+      avatarView?.glance(-0.9, 0.2, 700);
+    });
+    at(1150, () => avatarView?.glance(0.9, 0.1, 600));
+    at(1800, () => {
+      avatarView?.glance(0, 0.1, 700);
+      avatarView?.react("wink");
+    });
+    at(2600, () => {
+      set("out");
+      avatarView?.react("perk");
+    });
+    at(3000, () => {
+      cancelPeek();
+      refresh();
+      schedulePeek();
+    });
   }
 
   function paintChips(): void {
@@ -289,14 +352,24 @@ export async function mountApp(root: HTMLElement): Promise<void> {
       const before = tones.get(id);
       tones.set(id, tone);
       // a pill that newly turns red opens the island by itself, and it stays until you act
-      if (tone === "danger" && before !== "danger") alertOpen = true;
+      if (tone === "danger" && before !== "danger") {
+        alertOpen = true;
+        avatarView?.react("anticipate");
+      }
       refresh();
     },
     reportMusic(playing) {
+      if (playing && !musicPlaying) avatarView?.react("perk");
       musicPlaying = playing;
       refresh();
     },
     reportChip(id, chip) {
+      // a new track: perk up and glance at the card
+      const previous = chips.get(id);
+      if (chip && previous && previous.text !== chip.text && config.pills.find((p) => p.id === id)?.kind === "now-playing") {
+        avatarView?.react("perk");
+        avatarView?.glance(0.8, -0.2, 900);
+      }
       if (chip) chips.set(id, chip);
       else chips.delete(id);
       refresh();
@@ -384,6 +457,16 @@ export async function mountApp(root: HTMLElement): Promise<void> {
         onGazeModeChange(mode) {
           gazeMode = mode;
           setGazeMode(mode);
+        },
+        peeks: peeksOn,
+        onPeeksChange(value) {
+          peeksOn = value;
+          setPeeks(value);
+          if (value) schedulePeek();
+          else {
+            clearTimeout(peekSchedule);
+            cancelPeek();
+          }
         },
         openDelayMs: openDelay,
         onOpenDelayChange(ms) {
@@ -483,6 +566,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     dragFrom.grab = cursor.x - (position.x + size.width / 2);
     dragging = true;
     island.dataset.dragging = "on";
+    avatarView?.react("startle");
     clearTimeout(leaveTimer);
   }
 
@@ -521,6 +605,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     dragFrom = null;
     if (!wasDragging) return;
     justDragged = true; // swallow the click that follows a drag
+    avatarView?.react("squash");
     setTimeout(() => (justDragged = false), 0);
     void dragStep().finally(() => {
       dragging = false;
@@ -551,4 +636,5 @@ export async function mountApp(root: HTMLElement): Promise<void> {
 
   renderAvatar();
   showPills();
+  schedulePeek();
 }
