@@ -1,4 +1,4 @@
-//! Secrets live in the OS credential store (Windows Credential Manager).
+//! Secrets live in the OS credential store (Windows Credential Manager, macOS Keychain).
 //!
 //! The web view can *write* and *delete* a secret and ask whether one exists, but there is
 //! deliberately no command that reads one back: only Rust code attaches secrets to requests.

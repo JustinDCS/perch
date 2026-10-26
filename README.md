@@ -17,7 +17,7 @@ What is in this first slice:
 |---|---|
 | Transparent, always-on-top overlay window with tray icon | written, **verified on Windows 11** (overlay, tray build, window sizing) |
 | **Now-playing pill** (Windows media session: Spotify, Apple Music, browsers…) with title, artist, artwork, previous / play-pause / next, progress and seek | **verified on Windows 11 with Spotify** (metadata, artwork, play/pause, previous/next, progress) |
-| **REST/JSON pill** driven by a manifest (poll an API, map fields, colour by thresholds, secrets from Credential Manager, host approval) | **verified on Windows 11** with the public GitHub API (host approval, polling, stat layout); auth headers and secrets not yet tried live |
+| **REST/JSON pill** driven by a manifest (poll an API, map fields, colour by thresholds, secrets from the system credential store, host approval) | **verified on Windows 11** with the public GitHub API (host approval, polling, stat layout); auth headers and secrets not yet tried live |
 | **Avatar** (Perch's own amber default, or an uploaded file) reacting to idle / music / attention / asleep | working in a browser; not yet seen on Windows |
 | Settings: toggle pills, set secrets, review approved hosts, import avatars | working (tested in a browser) |
 
@@ -51,6 +51,15 @@ npm test               # validators, paths, tones, every file in examples/
 npm run test:core      # Rust safety rules
 npm run typecheck
 ```
+
+## macOS
+
+Perch builds for macOS 12+ (Apple Silicon and Intel, one universal app). Prerequisites: Node 20+, Rust, Xcode command line tools (`xcode-select --install`). Then `npm install` and `npm run tauri dev` / `npm run tauri build` as above.
+
+* **Installing a test build.** Builds are not signed with an Apple Developer ID or notarised, so Gatekeeper blocks the first launch. Drag Perch to Applications, then right-click it and choose **Open** (once). If macOS says it is damaged, run `xattr -cr /Applications/Perch.app`.
+* **Media.** Spotify and Apple Music (Music.app) are supported. Perch only asks an app about its track if it is already running, and never launches it. The first time, macOS asks whether Perch may control Spotify / Music: choose **OK**. If you declined, re-enable it in System Settings → Privacy & Security → Automation. Other players (browsers, etc.) are not supported on macOS.
+* **Placement.** The island hangs from the top edge of the screen, under the menu bar or notch. There is no Dock icon; use the menu bar icon for Show / hide, Library and Quit.
+* **Secrets** go in the macOS Keychain. Allow access if it asks.
 
 ## Your config folder
 
@@ -140,7 +149,7 @@ Rules: the key (Library → Local inbox) must be sent as `X-Perch-Key`; requests
 
 * `kind`: `"rest"` or `"now-playing"` (the built-in now-playing pill is always available; it needs no file).
 * `request.auth`: `bearer`, `header` (with a header `name`) or `basic` (with a `user`). The `secret` is only
-  the **name** of an entry in Windows Credential Manager. Set its value in **Settings → Secrets**. Never put a token in a manifest.
+  the **name** of an entry in the system credential store (Windows Credential Manager, macOS Keychain). Set its value in **Settings → Secrets**. Never put a token in a manifest.
 * `request.method`: `GET` (default) or `POST` (`body` is only allowed with `POST`). `refreshSeconds`: 5 to 86400, default 60.
 * `display.layout: "stat"`: `value` (path), optional `label`, `unit`, and `thresholds`. The first matching rule wins; each rule has
   `gte` / `lte` / `equals` and a `tone` of `neutral`, `good`, `warn` or `danger`.
@@ -156,7 +165,7 @@ A pill whose tone is `danger` makes the avatar switch to its **attention** state
 Two examples are in `examples/pips/`: `jira-open-tickets.json` (a count that turns amber and red) and `jira-assigned-to-me.json` (your five most recently updated tickets, each one opening in Jira).
 
 1. Create an API token at <https://id.atlassian.com/manage-profile/security/api-tokens>.
-2. In Perch: Library → Secrets, add a secret named `jira-token` and paste the token. It goes to Windows Credential Manager and is never shown again.
+2. In Perch: Library → Secrets, add a secret named `jira-token` and paste the token. It goes to the system credential store and is never shown again.
 3. Copy the examples into your config folder (Library → Open config folder → `pips`) and press Reload.
 4. In Library → Pills, fill in your **Jira site**, **Atlassian email** and, if you like, the project key or the JQL. The two pills share the site and email. No file editing needed.
 5. The pill asks to contact your site: choose Allow. The row links use the same host, so they work after that.
@@ -201,7 +210,7 @@ User files are data, never code. Several layers keep it that way:
 * **No markup from files.** The avatar is built with DOM calls and API text is set with `textContent`. Nothing user- or
   server-supplied is ever turned into HTML or SVG markup.
 * **Requests are made in Rust**, not in the web view, so API keys never enter the page. Responses are capped at 1 MB with a 10 s timeout, and redirects are not followed.
-* **Secrets** live in Windows Credential Manager. The page can save and delete one, but no command reads one back.
+* **Secrets** live in the system credential store (Windows Credential Manager, macOS Keychain). The page can save and delete one, but no command reads one back.
 * **Host approval.** A pill cannot contact a host until you approve it in a prompt; you can revoke it in Settings.
   Plain `http` is only allowed for `localhost` and private-network addresses, and link-local addresses (including cloud metadata
   endpoints) are always refused.

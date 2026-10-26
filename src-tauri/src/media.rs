@@ -1,4 +1,5 @@
-//! "Now playing" via the Windows System Media Transport Controls (SMTC).
+//! "Now playing". On Windows it uses the System Media Transport Controls (SMTC); on macOS see
+//! `media_macos.rs`.
 //!
 //! SMTC is the same layer that powers the volume flyout and the lock screen media card, so one
 //! implementation covers Spotify, Apple Music, browsers, VLC and anything else that reports to
@@ -272,8 +273,12 @@ mod imp {
     }
 }
 
-/// Perch's overlay targets Windows. These stubs only keep the crate compiling elsewhere.
-#[cfg(not(windows))]
+#[cfg(target_os = "macos")]
+#[path = "media_macos.rs"]
+mod imp;
+
+/// Other systems: these stubs only keep the crate compiling.
+#[cfg(not(any(windows, target_os = "macos")))]
 mod imp {
     use super::MediaState;
 
@@ -286,7 +291,7 @@ mod imp {
     }
 
     pub fn control(_action: &str, _position_ms: Option<u64>, _source: Option<&str>) -> Result<(), String> {
-        Err("now-playing controls are only available on Windows".into())
+        Err("now-playing controls are only available on Windows and macOS".into())
     }
 }
 

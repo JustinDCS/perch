@@ -53,6 +53,10 @@ pub fn run() {
             }
             app.manage(AppState::new(config_dir)?);
 
+            // macOS: no Dock icon and no menu bar of its own; Perch lives in the tray and on the screen edge
+            #[cfg(target_os = "macos")]
+            app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+
             inbox::autostart(app.handle());
             place_at_top_centre(app.handle());
 

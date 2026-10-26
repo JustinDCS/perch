@@ -5,6 +5,7 @@
 //! it touches the network, the keychain or the file system.
 
 pub mod inbox;
+pub mod mac_media;
 
 use std::collections::BTreeSet;
 use std::fs;
