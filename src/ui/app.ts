@@ -236,6 +236,43 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     refresh();
   }
 
+  // ---- gaze: the avatar looks at the pointer, wherever it is on screen ------------------------
+  /** how far away (in logical pixels) the pointer must be for the avatar to look at it fully */
+  const GAZE_RANGE_PX = 320;
+  let lastCursor = "";
+  let gazeBusy = false;
+  async function trackPointer(): Promise<void> {
+    if (gazeBusy || document.hidden || !avatarView) return;
+    gazeBusy = true;
+    try {
+      const [cursor, position] = await Promise.all([cursorPosition(), getCurrentWindow().outerPosition()]);
+      const key = `${cursor.x},${cursor.y}`;
+      if (key === lastCursor) return; // a still pointer is not news; interest fades by itself
+      lastCursor = key;
+      const box = perch.getBoundingClientRect();
+      const scale = window.devicePixelRatio || 1;
+      const cx = position.x + (box.left + box.width / 2) * scale;
+      const cy = position.y + (box.top + box.height / 2) * scale;
+      avatarView.lookAt((cursor.x - cx) / (GAZE_RANGE_PX * scale), (cursor.y - cy) / (GAZE_RANGE_PX * scale));
+    } catch {
+      // the pointer could not be read this time
+    } finally {
+      gazeBusy = false;
+    }
+  }
+  if (inTauri) {
+    setInterval(() => void trackPointer(), 50);
+  } else {
+    // in a plain browser (development) the pointer is only known while it is over the page
+    document.addEventListener("pointermove", (event) => {
+      const box = perch.getBoundingClientRect();
+      avatarView?.lookAt(
+        (event.clientX - (box.left + box.width / 2)) / GAZE_RANGE_PX,
+        (event.clientY - (box.top + box.height / 2)) / GAZE_RANGE_PX,
+      );
+    });
+  }
+
   // ---- pills -------------------------------------------------------------------------------
   const pillHost: PillHost = {
     reportTone(id, tone) {

@@ -20,6 +20,10 @@ function svgEl<K extends keyof SVGElementTagNameMap>(tag: K, attrs: Attrs = {}):
 export interface AvatarView {
   el: SVGSVGElement;
   setState(name: ViewState): void;
+  /** The pointer is at (x, y) relative to the avatar, each in [-1, 1]; the eyes follow it. */
+  lookAt(x: number, y: number): void;
+  /** Nothing to look at: go back to glancing around on its own. */
+  lookAway(): void;
   destroy(): void;
 }
 
@@ -103,6 +107,9 @@ export function createAvatarView(avatar: Avatar): AvatarView {
   return {
     el: svg,
     setState,
+    // Perch's older avatar format has no head to turn
+    lookAt() {},
+    lookAway() {},
     destroy() {
       if (blinkTimer) clearTimeout(blinkTimer);
       if (blinkReset) clearTimeout(blinkReset);

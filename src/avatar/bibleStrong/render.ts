@@ -2,6 +2,7 @@
 // 2D approximation: the Studio draws a lit 3D shape, here the head turn is shown by sliding
 // and squeezing the face across the body, which reads well at 48 pixels.
 
+import { BlinkPlanner, Gaze, breath, interestFor, noise } from "../life";
 import type { AvatarView, ViewState } from "../renderer";
 import { ease, locate, mixPose, pickAnimation, poseOf, type Pose } from "./pose";
 import type { BsAnimation, BsAvatar, BsSurface } from "./schema";
@@ -119,6 +120,14 @@ export function createBibleStrongView(avatar: BsAvatar): AvatarView {
   let blinkAt = Infinity;
   let blinkUntil = 0;
   let blinkStart = 0;
+  let blinkDur = 0;
+  let plannedDur = 0;
+  const planner = new BlinkPlanner();
+  const gaze = new Gaze();
+  let stateName: ViewState = "idle";
+  // the scripted loops run on their own clock, which speeds up and slows down a little
+  let clock = 0;
+  let lastDraw = 0;
   let frame = 0;
   let destroyed = false;
   let lastKey = "";
@@ -134,9 +143,9 @@ export function createBibleStrongView(avatar: BsAvatar): AvatarView {
       blinkAt = Infinity;
       return;
     }
-    const lo = Math.min(b.minIntervalMs, b.maxIntervalMs);
-    const hi = Math.max(b.minIntervalMs, b.maxIntervalMs);
-    blinkAt = now + (first ? b.initialDelayMs : lo + Math.random() * (hi - lo));
+    const plan = planner.next(now, b, first);
+    blinkAt = plan.at;
+    plannedDur = plan.durationMs;
   };
 
   function setEye(el: SVGRectElement, eye: Pose["left"], cx: number, cy: number, squash: number, closed: number) {
@@ -152,11 +161,14 @@ export function createBibleStrongView(avatar: BsAvatar): AvatarView {
 
   function draw(now: number) {
     const expressionOf = (name: string) => avatar.expressions[name] ?? avatar.expressions["neutral"]!;
+    const dt = lastDraw === 0 ? 16 : Math.min(100, now - lastDraw);
+    lastDraw = now;
+    if (!reduceMotion) clock += dt * (1 + 0.08 * noise(now / 1000 * 0.12, 3));
     let pose: Pose;
     let eyeMotion = "none";
     let bodyMotion = "none";
     if (animation && !reduceMotion) {
-      const spot = locate(animation, now - startedAt);
+      const spot = locate(animation, clock);
       const from = expressionOf(spot.from);
       const to = expressionOf(spot.to);
       pose = mixPose(poseOf(from), poseOf(to), ease(spot.kind, spot.t), base);
@@ -177,13 +189,13 @@ export function createBibleStrongView(avatar: BsAvatar): AvatarView {
     // blinking: close and reopen the eyes over `durationMs`
     let closed = 1;
     if (animation && now >= blinkAt) {
-      blinkUntil = now + animation.blink.durationMs;
-      nextBlink(blinkUntil, false);
-      blinkAt = Math.max(blinkAt, blinkUntil);
       blinkStart = now;
+      blinkDur = plannedDur;
+      blinkUntil = now + blinkDur;
+      nextBlink(blinkUntil, false);
     }
     if (now < blinkUntil && animation) {
-      const p = (now - blinkStart) / animation.blink.durationMs;
+      const p = (now - blinkStart) / blinkDur;
       closed = Math.max(0.08, Math.abs(p * 2 - 1));
     }
 
@@ -211,18 +223,25 @@ export function createBibleStrongView(avatar: BsAvatar): AvatarView {
     // the head turn: yaw slides the face sideways, pitch up or down, roll tilts it
     const yaw = Math.sin(rad(pose.headY));
     const pitch = Math.sin(rad(pose.headX));
-    const faceX = yaw * faceRadius * 0.6 + eyeJitterX;
-    const faceY = -pitch * faceRadius * 0.6 + eyeJitterY;
-    const squash = Math.max(0.55, Math.cos(rad(pose.headY)));
+    // where it is looking: the pointer (or a wandering glance) turns the face a little further,
+    // plus a slow drift so the eyes are never perfectly still
+    const look = reduceMotion ? { x: 0, y: 0 } : gaze.step(now, dt, { amount: interestFor(stateName) });
+    const drift = reduceMotion || stateName === "asleep" ? 0 : 1;
+    const faceX = yaw * faceRadius * 0.6 + eyeJitterX + (look.x * 0.42 + noise(sec * 0.35, 11) * 0.06 * drift) * faceRadius;
+    const faceY = -pitch * faceRadius * 0.6 + eyeJitterY + (look.y * 0.34 + noise(sec * 0.3, 17) * 0.05 * drift) * faceRadius;
+    const squash = Math.max(0.55, Math.cos(rad(pose.headY))) * (1 - 0.18 * Math.abs(look.x));
+    const rise = reduceMotion ? { sx: 1, sy: 1 } : breath(sec, stateName === "asleep");
     const half = (pose.spacing * s * squash) / 2;
 
-    const key = [pose.bodyColor, pose.eyeColor, faceX, faceY, half, pose.headZ, closed, bodyX, bodyY, pose.left.height, pose.right.height, pose.left.angle, pose.right.angle]
+    const key = [rise.sy, look.x, look.y, pose.bodyColor, pose.eyeColor, faceX, faceY, half, pose.headZ, closed, bodyX, bodyY, pose.left.height, pose.right.height, pose.left.angle, pose.right.angle]
       .map((v) => (typeof v === "number" ? v.toFixed(2) : v))
       .join("|");
     if (key === lastKey) return;
     lastKey = key;
 
-    faceGroup.setAttribute("transform", `translate(${num(50 + bodyX)} ${num(50 + bodyY)}) rotate(${num(pose.headZ * 0.6)})`);
+    // breathing grows the body upwards from its base
+    character.setAttribute("transform", `translate(50 88) scale(${num(rise.sx)} ${num(rise.sy)}) translate(-50 -88)`);
+    faceGroup.setAttribute("transform", `translate(${num(50 + bodyX)} ${num(50 + bodyY)}) rotate(${num(pose.headZ * 0.6 + look.x * 3)})`);
     bodyGroup.setAttribute("transform", `translate(${num(50 + bodyX)} ${num(50 + bodyY)})`);
     for (const shape of bodyShapes) {
       shape.setAttribute("fill", pose.bodyColor ?? base.body);
@@ -234,16 +253,19 @@ export function createBibleStrongView(avatar: BsAvatar): AvatarView {
     setEye(rightEye, pose.right, faceX + half + pose.right.x * s * squash, faceY + pose.right.y * s, squash, closed);
   }
 
+  // 30 frames a second is plenty for a face this small, and keeps the idle cost down
   function loop(now: number) {
     if (destroyed) return;
-    draw(now);
+    if (now - lastDraw >= 32) draw(now);
     frame = requestAnimationFrame(loop);
   }
 
   function setState(name: ViewState): void {
     const picked = pickAnimation(avatar.animations, avatar.animationOrder, name);
     animation = picked ? avatar.animations[picked] : undefined;
+    stateName = name;
     startedAt = performance.now();
+    clock = 0;
     if (shown && !reduceMotion) {
       blendFrom = shown;
       blendStart = startedAt;
@@ -263,6 +285,12 @@ export function createBibleStrongView(avatar: BsAvatar): AvatarView {
     setState(name) {
       setState(name);
       if (reduceMotion) draw(performance.now());
+    },
+    lookAt(x, y) {
+      gaze.look(x, y, performance.now());
+    },
+    lookAway() {
+      gaze.away();
     },
     destroy() {
       destroyed = true;
