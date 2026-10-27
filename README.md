@@ -1,30 +1,53 @@
-<h1 align="center">Perch</h1>
+<div align="center">
 
-<p align="center">
-  <b>A tiny companion that lives at the top of your screen.</b><br>
-  Music, tickets, build status and "can I deploy?" questions, one glance away.
-</p>
+<img src="src-tauri/icons/128x128.png" width="96" alt="Perch">
 
-<p align="center">
-  Windows · macOS · Tauri 2 · No accounts · Your data stays on your machine
-</p>
+# Perch
+
+**A small companion that lives at the top of your screen.**<br>
+Music, tickets, build status and "can I deploy?" questions, one glance away.
+
+[![Release](https://img.shields.io/github/v/release/JustinDCS/perch?style=flat-square&color=f2b94b)](https://github.com/JustinDCS/perch/releases)
+![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS-6fd9b8?style=flat-square)
+![Tauri](https://img.shields.io/badge/Tauri-2-24c8db?style=flat-square)
+[![Licence](https://img.shields.io/badge/licence-MIT-a9c4ff?style=flat-square)](LICENSE)
+
+<br>
+
+<img src="docs/img/home.png" width="420" alt="Perch open: now playing, a commit chart and a stat card">
+
+</div>
 
 ---
 
 Perch is an always-on-top island with a little avatar and a stack of **pills**: small cards that show what you want to see. It stays out of the way until something happens, then perks up, plays a chime and tells you.
 
-## What it does
+## ✨ What it does
 
-* **Now playing.** Title, artist, artwork, previous / play-pause / next, progress and seeking. Spotify, Apple Music and (on Windows) anything with a media session.
-* **Anything with an API.** A pill polls a JSON address and shows a number, a status or a list: open Jira tickets, GitHub stars, a deploy status. Colours change with thresholds, rows link to the source.
-* **Approval cards.** A pill can show a question with one to three buttons (Approve / Reject). The button only sends the request written in the pill file, and risky ones ask twice.
-* **Local inbox.** Scripts and tools on your own PC can ask you a question through a loopback-only, key-protected endpoint. Off by default.
-* **An avatar with moods.** Idle, listening, alert, asleep. Use Perch's own or bring your own.
-* **A Library.** Add a pill from a bundled example or from a file in one click. Variables (your site, your email) are filled in from Settings, never edited in JSON.
+* 🎵 **Now playing.** Title, artist, artwork, previous / play-pause / next, progress and seeking. Spotify, Apple Music and (on Windows) anything with a media session.
+* 🔌 **Anything with an API.** A pill polls a JSON address and shows a number, a status, a list or a bar chart: open Jira tickets, GitHub stars, commits per day. Colours change with thresholds, and rows link to the source.
+* ✅ **Approval cards.** A pill can ask you a question with one to three buttons (Approve / Reject). A button only sends the request written in the pill file, and risky ones ask twice.
+* 📥 **Local inbox.** Scripts and tools on your own PC can ask you a question through a loopback-only, key-protected endpoint. Off by default.
+* 🐣 **An avatar with moods.** Awake, listening, alert, asleep. Use Perch's own or bring your own.
+* 📚 **A Library.** Add a pill from a bundled example or a file in one click. Variables (your site, your email) are filled in from Settings, never edited in JSON.
+* 🔄 **Updates itself.** Signed updates install in the background, and you can turn that off.
 
 Pills and avatars are **small JSON files, not code**, so nothing you add can run anything on your PC.
 
-## Safe by design
+## 👀 A look
+
+<table>
+  <tr>
+    <td align="center" width="33%"><img src="docs/img/small.png" alt="Small view while music plays"><br><sub><b>Small</b><br>live chips while something plays</sub></td>
+    <td align="center" width="33%"><img src="docs/img/resting.png" alt="Perch resting at the top edge"><br><sub><b>Resting</b><br>stays out, glances and winks</sub></td>
+    <td align="center" width="33%"><img src="docs/img/sleeping.png" alt="Perch asleep"><br><sub><b>Asleep</b><br>after a quiet spell</sub></td>
+  </tr>
+  <tr>
+    <td colspan="3" align="center"><br><img src="docs/img/approvals.png" width="380" alt="Approval cards with Approve and Reject buttons"><br><sub><b>Needs you</b><br>approval cards turn the lip amber, play a chime and ask once</sub></td>
+  </tr>
+</table>
+
+## 🔒 Safe by design
 
 * Secrets live in the system credential store (Windows Credential Manager, macOS Keychain). The page can save one but nothing can read it back.
 * Every address a pill talks to must be on a host **you approved**.
@@ -32,19 +55,17 @@ Pills and avatars are **small JSON files, not code**, so nothing you add can run
 
 Details are in [Security model](#security-model).
 
-## Get it
+## 📦 Get it
 
-Download the installer from the **Releases** page: `.exe` / `.msi` for Windows, `.dmg` for Mac.
+Download the installer from the [Releases page](https://github.com/JustinDCS/perch/releases): `.exe` / `.msi` for Windows, `.dmg` for Mac.
 
 1. **Windows:** SmartScreen may warn about an unknown publisher (the build is not signed yet). Choose **More info → Run anyway**.
 2. **Mac:** right-click Perch and choose **Open** the first time. See [macOS](#macos).
 3. Perch appears at the top of the screen. The tray / menu bar icon has Show / hide, Library, Centre on this screen and Quit.
 
-This is an early test version. There is no auto-update: install the next build over the top.
+This is an early version. **Known issues:** seek dragging, the local inbox and approval cards against real services are still being proven on real PCs; on a Mac only Spotify and Apple Music are read; builds are unsigned.
 
-**Known issues:** seek dragging, the local inbox and approval cards against real services are still being proven on real PCs; on a Mac only Spotify and Apple Music are read; builds are unsigned.
-
-**Feedback:** tell Justin what you did, what you expected and what happened, with a screenshot if you can. Settings → Problems lists the last errors; copy them in.
+**Feedback:** [open an issue](https://github.com/JustinDCS/perch/issues) with what you did, what you expected and what happened, and a screenshot if you can. Settings → Problems lists the last errors; copy them in.
 
 ## Build it yourself
 
@@ -63,7 +84,7 @@ npm run test:core      # Rust safety rules
 npm run typecheck
 ```
 
-Tracked in Jira as DD-107 (research: DD-98).
+
 
 ## macOS
 
@@ -137,7 +158,7 @@ Open the Library with the sliders icon (or the tray menu). **Pills** has a switc
 Off by default. Turn it on in **Library → Local inbox** and any program on this PC can ask you a question and wait for your answer, for example a build script ("Run npm publish?") or a tool that wants permission. Perch listens only on `127.0.0.1` (port 47600 or the next free one), never on the network.
 
 ```
-curl.exe -X POST http://127.0.0.1:47600/ask -H "X-Perch-Key: <your key>" -d "{\"title\":\"Run it?\",\"detail\":\"tincakes-site 1.5.0\",\"buttons\":[\"Allow\",\"Deny\"]}"
+curl.exe -X POST http://127.0.0.1:47600/ask -H "X-Perch-Key: <your key>" -d "{\"title\":\"Run it?\",\"detail\":\"my-site 1.5.0\",\"buttons\":[\"Allow\",\"Deny\"]}"
 ```
 
 The call waits and then returns `{"answer":"Allow"}`; `{"answer":null,"reason":"dismissed"}` if you dismissed it, or HTTP 408 with `"reason":"timeout"` if nobody answered. Fields: `title` (1 to 120 characters), `detail` (optional, up to 240), `buttons` (1 to 3 labels, the first is highlighted), `source` (optional label such as "build script"), `timeoutSeconds` (optional, 5 to 3600, default 300). The question shows as a card at the top of the island, counts in "N need you", and opens the island for a few seconds like any new request. If the program hangs up, the card disappears.

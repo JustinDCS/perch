@@ -117,11 +117,11 @@ const real: Ipc = {
 // ---- browser mock (development only) -------------------------------------------------------
 
 function createMock(): Ipc {
-  const approved = new Set<string>();
+  const approved = new Set<string>(typeof location !== "undefined" && location.search.includes("approved") ? ["mock.example.test"] : []);
   const secrets = new Set<string>();
   let inbox: InboxStatus = { enabled: false, port: null, key: "0123456789abcdef0123456789abcdef0123456789abcdef" };
   let pending = [
-    { id: "dep-41", title: "Deploy tincakes-site to production?", summary: "main · 3 commits since v1.4 · tests passed" },
+    { id: "dep-41", title: "Deploy my-site to production?", summary: "main · 3 commits since v1.4 · tests passed" },
     { id: "inv-2041", title: "Approve invoice INV-2041?", summary: "Example client · R 12 480.00 · due 31 Oct" },
   ];
   let failedOnce = false;

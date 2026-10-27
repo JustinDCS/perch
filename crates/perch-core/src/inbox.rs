@@ -463,7 +463,7 @@ mod tests {
 
     #[test]
     fn parses_an_ask() {
-        let ask = parse_ask(br#"{"title":"Run npm publish?","detail":"tincakes-site 1.5.0","buttons":["Allow","Deny"],"source":"build"}"#).unwrap();
+        let ask = parse_ask(br#"{"title":"Run npm publish?","detail":"my-site 1.5.0","buttons":["Allow","Deny"],"source":"build"}"#).unwrap();
         assert_eq!(ask.title, "Run npm publish?");
         assert_eq!(ask.buttons, vec!["Allow", "Deny"]);
         assert_eq!(ask.wait_secs, DEFAULT_WAIT_SECS);
