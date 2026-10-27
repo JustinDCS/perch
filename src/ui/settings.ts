@@ -22,8 +22,8 @@ export interface SettingsContext {
   variableValues(): Store;
   /** Save a variable's value; returns the tidied text to show back. */
   onVariableChange(pill: RestPill, variable: PillVariable, value: string): string;
-  hideWhenQuiet: boolean;
-  onHideWhenQuietChange(value: boolean): void;
+  stayVisible: boolean;
+  onStayVisibleChange(value: boolean): void;
   soundMode: SoundMode;
   onSoundModeChange(mode: SoundMode): void;
   soundVolume: number;
@@ -55,9 +55,9 @@ export function renderSettings(ctx: SettingsContext): HTMLElement {
   const root = h("div", { class: "settings" });
 
   // ---- behaviour ---------------------------------------------------------------------------
-  const quietBox = h("input", { type: "checkbox", class: "switch", attrs: { "aria-label": "Hide when nothing is happening" } });
-  quietBox.checked = ctx.hideWhenQuiet;
-  quietBox.addEventListener("change", () => ctx.onHideWhenQuietChange(quietBox.checked));
+  const quietBox = h("input", { type: "checkbox", class: "switch", attrs: { "aria-label": "Stay visible when nothing is happening" } });
+  quietBox.checked = ctx.stayVisible;
+  quietBox.addEventListener("change", () => ctx.onStayVisibleChange(quietBox.checked));
 
   const soundSelect = h("select", { class: "input", attrs: { "aria-label": "Sounds" } });
   for (const m of SOUND_MODES) soundSelect.append(h("option", { text: m.label, value: m.mode }));
@@ -67,7 +67,7 @@ export function renderSettings(ctx: SettingsContext): HTMLElement {
   volume.value = String(Math.round(ctx.soundVolume * 100));
   volume.addEventListener("change", () => ctx.onSoundVolumeChange(Number(volume.value) / 100));
 
-  const peekBox = h("input", { type: "checkbox", class: "switch", attrs: { "aria-label": "Peek out and wink now and then" } });
+  const peekBox = h("input", { type: "checkbox", class: "switch", attrs: { "aria-label": "Look around and wink now and then when quiet" } });
   peekBox.checked = ctx.peeks;
   peekBox.addEventListener("change", () => ctx.onPeeksChange(peekBox.checked));
 
@@ -301,8 +301,8 @@ export function renderSettings(ctx: SettingsContext): HTMLElement {
       "Behaviour",
       h("label", { class: "row" }, h("span", { class: "row-main wrap", text: "Open after resting the pointer" }), delaySelect),
       h("label", { class: "row" }, h("span", { class: "row-main wrap", text: "Eyes follow the pointer" }), gazeSelect),
-      h("label", { class: "row" }, h("span", { class: "row-main wrap", text: "Shrink to a sliver when nothing is happening" }), quietBox),
-      h("label", { class: "row" }, h("span", { class: "row-main wrap", text: "Peek out and wink now and then while hidden" }), peekBox),
+      h("label", { class: "row" }, h("span", { class: "row-main wrap", text: "Stay visible when nothing is happening (off: shrink to a sliver)" }), quietBox),
+      h("label", { class: "row" }, h("span", { class: "row-main wrap", text: "Look around and wink now and then when quiet" }), peekBox),
       h("p", { class: "muted", text: "Drag the avatar to move Perch along the top of any screen." }),
       h("div", { class: "row" }, h("button", { class: "btn", text: "Centre on this screen", on: { click: () => ctx.onResetPosition() } })),
     ),

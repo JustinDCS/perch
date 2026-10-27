@@ -91,7 +91,7 @@ Files with mistakes never crash Perch: they are listed with the exact problems u
 
 Perch hangs from the top edge of your screen like a notch, with the avatar perched on its lower lip:
 
-* **Hidden**: when nothing is happening it shrinks to a sliver with two eyes peeking out (switch this off in the Library).
+* **Resting**: when nothing is happening Perch stays out on a small ledge at the top edge, looking around and winking now and then. After ten quiet minutes he falls asleep (grey, eyes closed, a few z). Music or a pill that needs you widens the ledge into the small view. In Library → Behaviour, switch off *Stay visible when nothing is happening* to get the old thin sliver instead.
 * **Small**: while music plays or a pill needs attention it shows one chip per pill (♪ track, ★ value, count). In the Library, each pill has *Show in the small view*: switch it off for a pill you only want when the island is open (for example tickets, if you only care about the song). A switched-off pill still shows its chip when it turns amber or red.
 * **Home**: rest the pointer on it for about a second (a ring fills beside the pointer; Library → Behaviour changes the wait) or click the avatar to keep it open. Brushing past it does nothing, so it will not cover things at the top of your screen. A pill that turns red opens it by itself, and it stays open until you have been over it and left.
 * **Moving it**: drag the avatar. The island slides along the top edge of whichever screen the pointer is on, and remembers where you dropped it. Library → Behaviour → *Centre on this screen* resets it.

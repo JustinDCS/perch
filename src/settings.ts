@@ -47,20 +47,21 @@ export function setAvatarFile(file: string | null): void {
   }
 }
 
-const HIDE_QUIET_KEY = "perch.hideWhenQuiet";
+const STAY_VISIBLE_KEY = "perch.stayVisible";
 
-/** Should the island shrink to a sliver when nothing is happening? On unless the user turned it off. */
-export function getHideWhenQuiet(): boolean {
+/** Should Perch stay out on the ledge when nothing is happening? On unless the user turned it off
+ *  (off: the old thin sliver at the top edge). */
+export function getStayVisible(): boolean {
   try {
-    return localStorage.getItem(HIDE_QUIET_KEY) !== "0";
+    return localStorage.getItem(STAY_VISIBLE_KEY) !== "0";
   } catch {
     return true;
   }
 }
 
-export function setHideWhenQuiet(value: boolean): void {
+export function setStayVisible(value: boolean): void {
   try {
-    localStorage.setItem(HIDE_QUIET_KEY, value ? "1" : "0");
+    localStorage.setItem(STAY_VISIBLE_KEY, value ? "1" : "0");
   } catch {
     // ignore
   }

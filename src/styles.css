@@ -68,6 +68,12 @@ input[type="checkbox"] {
   height: 28px;
   padding: 0;
 }
+/* resting: Perch stays out on a ledge. The ledge and the avatar's ring are one dark shape. */
+.island[data-mode="rest"] {
+  width: 80px;
+  height: 52px;
+  padding: 0;
+}
 .island[data-mode="peek"] {
   width: 100px;
   height: 52px;
@@ -89,7 +95,8 @@ input[type="checkbox"] {
   background: radial-gradient(circle at 100% 100%, transparent 15.5px, var(--ink) 16px);
 }
 .island[data-mode="hidden"] .shoulder,
-.island[data-mode="peek"] .shoulder {
+.island[data-mode="peek"] .shoulder,
+.island[data-mode="rest"] .shoulder {
   display: none;
 }
 .island-body {
@@ -116,6 +123,17 @@ input[type="checkbox"] {
   padding: 0;
   border-radius: 0 0 6px 6px;
   overflow: hidden;
+}
+.island[data-mode="rest"] .island-body {
+  position: absolute;
+  inset: 0;
+  width: 80px;
+  height: 52px;
+  margin: 0;
+  padding: 0;
+  border-radius: 0;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='52' viewBox='0 0 80 52'%3E%3Cpath d='M4 0H76V2Q76 6 72 6H67Q61 6 60 10A25 25 0 1 1 20 10Q19 6 13 6H8Q4 6 4 2Z' fill='%23111216'/%3E%3C/svg%3E") no-repeat;
+  overflow: visible;
 }
 /* the line along the lip takes the worst tone */
 .island[data-tone="good"] .island-body {
@@ -183,6 +201,55 @@ input[type="checkbox"] {
   transform: translateX(-50%);
   background: none;
   border-radius: 0;
+}
+
+.island[data-mode="rest"] .perch {
+  --perch-size: 44px;
+  left: 50%;
+  top: 3px;
+  padding: 0;
+  transform: translateX(-50%);
+  background: none;
+}
+/* asleep: a couple of z drift up beside the avatar (one cheap, compositor-only animation) */
+.island[data-mode="rest"][data-asleep="on"]::before,
+.island[data-mode="rest"][data-asleep="on"]::after {
+  content: "z";
+  position: absolute;
+  z-index: 3;
+  color: #aab2c9;
+  font-weight: 700;
+  pointer-events: none;
+  animation: zzz 3.2s ease-in-out infinite;
+}
+.island[data-mode="rest"][data-asleep="on"]::before {
+  left: 60px;
+  top: 26px;
+  font-size: 12px;
+}
+.island[data-mode="rest"][data-asleep="on"]::after {
+  left: 68px;
+  top: 14px;
+  font-size: 9px;
+  animation-delay: 1.4s;
+}
+@keyframes zzz {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .island[data-mode="rest"][data-asleep="on"]::before,
+  .island[data-mode="rest"][data-asleep="on"]::after {
+    animation: none;
+    opacity: 1;
+  }
 }
 
 /* peeking: the whole avatar slides in from above the screen edge, then back out */

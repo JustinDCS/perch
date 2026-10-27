@@ -27,7 +27,7 @@ import {
   getDisabledPills,
   getGazeMode,
   getHiddenChips,
-  getHideWhenQuiet,
+  getStayVisible,
   getOpenDelay,
   getPeeks,
   getPlacement,
@@ -36,7 +36,7 @@ import {
   setAvatarFile,
   setChipShown,
   setGazeMode,
-  setHideWhenQuiet,
+  setStayVisible,
   setOpenDelay,
   setPeeks,
   setPillEnabled,
@@ -53,7 +53,7 @@ import { visibleChips } from "./chips";
 import { fracForCentre, monitorAt, monitorKey, resolvePlacement, windowOrigin, type MonitorBox } from "./placement";
 import { renderSettings } from "./settings";
 
-type Mode = "hidden" | "peek" | "small" | "home";
+type Mode = "hidden" | "peek" | "rest" | "small" | "home";
 
 const LEAVE_DELAY_MS = 600;
 /** how far the pointer must travel on the avatar before it counts as a drag, not a click */
@@ -67,7 +67,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   let pillViews: PillView[] = [];
   let avatarView: AvatarView | null = null;
   let musicPlaying = false;
-  let hideWhenQuiet = getHideWhenQuiet();
+  let stayVisible = getStayVisible();
   const tones = new Map<string, Tone>();
   const chips = new Map<string, Chip>();
 
@@ -265,8 +265,9 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     if (view === "settings" || modalOpen || pinned || alertOpen || hovering) return "home";
     const worst = worstTone();
     const active = musicPlaying || TONE_RANK[worst] >= TONE_RANK.warn;
-    if (hideWhenQuiet && !active) return "hidden";
-    return shownChips().length > 0 ? "small" : hideWhenQuiet ? "hidden" : "small";
+    const quiet: Mode = stayVisible ? "rest" : "hidden";
+    if (!active) return quiet;
+    return shownChips().length > 0 ? "small" : quiet;
   }
 
   function shownChips(): [string, Chip][] {
@@ -302,11 +303,27 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   }
 
   function startPeek(): void {
-    if (!peeksOn || peek !== "off" || dragging || asleep || document.hidden || baseMode() !== "hidden") {
+    const quietMode = baseMode();
+    if (!peeksOn || peek !== "off" || dragging || asleep || document.hidden || (quietMode !== "hidden" && quietMode !== "rest")) {
       schedulePeek();
       return;
     }
     const at = (ms: number, fn: () => void) => peekTimers.push(setTimeout(fn, ms));
+    if (quietMode === "rest") {
+      // already out on the ledge: just look around and wink
+      avatarView?.glance(-0.9, 0.2, 700);
+      at(700, () => avatarView?.glance(0.9, 0.1, 600));
+      at(1350, () => {
+        avatarView?.glance(0, 0.1, 700);
+        avatarView?.react("wink");
+        sound.play("wink");
+      });
+      at(2400, () => {
+        peekTimers = [];
+        schedulePeek();
+      });
+      return;
+    }
     const set = (next: Peek) => {
       peek = next;
       island.dataset.peek = next;
@@ -388,6 +405,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
 
     paintChips();
     island.dataset.tone = worstTone();
+    island.dataset.asleep = asleep ? "on" : "off";
     const nextMode = currentMode();
     animateModeChange(island.dataset.mode as Mode | undefined, nextMode);
     island.dataset.mode = nextMode;
@@ -610,10 +628,10 @@ export async function mountApp(root: HTMLElement): Promise<void> {
           setChipShown(id, shown);
           refresh();
         },
-        hideWhenQuiet,
-        onHideWhenQuietChange(value) {
-          hideWhenQuiet = value;
-          setHideWhenQuiet(value);
+        stayVisible,
+        onStayVisibleChange(value) {
+          stayVisible = value;
+          setStayVisible(value);
         },
         gazeMode,
         onGazeModeChange(mode) {

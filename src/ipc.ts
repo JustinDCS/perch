@@ -210,7 +210,7 @@ function createMock(): Ipc {
 
   // two pretend apps; add ?mock2 to the address to have the second one playing as well
   const mockApps = {
-    "Spotify.exe": { title: typeof location !== "undefined" && location.search.includes("longtitle") ? "ALORS ON DANSE (HARDTEKK) - SUPER SLOWED + REVERB (Extended Club Mix, Remastered 2026)" : "PPAPTEKK - Super Slowed", artist: "DIPIENS, HRXSTAL", durationMs: 111_000, playing: true, positionMs: 23_000 },
+    "Spotify.exe": { title: typeof location !== "undefined" && location.search.includes("longtitle") ? "ALORS ON DANSE (HARDTEKK) - SUPER SLOWED + REVERB (Extended Club Mix, Remastered 2026)" : "PPAPTEKK - Super Slowed", artist: "DIPIENS, HRXSTAL", durationMs: 111_000, playing: !(typeof location !== "undefined" && location.search.includes("quiet")), positionMs: 23_000 },
     "chrome.exe": { title: "lofi hip hop radio", artist: "Lofi Girl", durationMs: 3_600_000, playing: typeof location !== "undefined" && location.search.includes("mock2"), positionMs: 600_000 },
   };
   type MockId = keyof typeof mockApps;
