@@ -1,6 +1,6 @@
 [package]
 name = "perch"
-version = "0.1.2"
+version = "0.1.3"
 description = "Perch: a small desktop companion with user-defined pills and avatars"
 edition = "2021"
 publish = false
