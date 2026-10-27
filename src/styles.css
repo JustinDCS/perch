@@ -1,0 +1,1013 @@
+:root {
+  --bg: rgba(22, 24, 31, 0.97);
+  --bg-2: #1e212b;
+  --bg-3: #292d3b;
+  --line: #333849;
+  --text: #eceef5;
+  --muted: #9aa1b5;
+  --accent: #f2b94b;
+  --good: #5fd39a;
+  --warn: #f2b94b;
+  --danger: #f2685b;
+  color-scheme: dark;
+  font: 13px/1.4 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+[hidden] {
+  display: none !important;
+}
+
+html,
+body {
+  margin: 0;
+  background: transparent; /* the window itself is transparent */
+  color: var(--text);
+  overflow: hidden;
+  user-select: none;
+}
+
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+input[type="checkbox"] {
+  accent-color: var(--accent);
+}
+
+/* island ------------------------------------------------------------------ */
+:root {
+  --ink: #111216;
+  --r: 32px;
+}
+#root {
+  display: flex;
+  justify-content: center;
+}
+.island {
+  position: relative;
+  /* never shrink to fit the window: the window is sized to the island, not the other way round */
+  flex: none;
+  width: max-content;
+  max-width: 452px;
+  padding: 0 16px;
+}
+.island[data-mode="home"] {
+  width: 452px;
+  padding-bottom: 32px;
+}
+.island[data-mode="small"] {
+  padding-bottom: 20px;
+}
+.island[data-mode="hidden"] {
+  width: 100px;
+  height: 28px;
+  padding: 0;
+}
+/* resting: Perch stays out on a ledge. The ledge and the avatar's ring are one dark shape. */
+.island[data-mode="rest"] {
+  width: 80px;
+  height: 52px;
+  padding: 0;
+}
+.island[data-mode="peek"] {
+  width: 100px;
+  height: 52px;
+  padding: 0;
+}
+.shoulder {
+  position: absolute;
+  top: 0;
+  width: 16px;
+  height: 16px;
+  pointer-events: none;
+}
+.shoulder.left {
+  left: 0;
+  background: radial-gradient(circle at 0 100%, transparent 15.5px, var(--ink) 16px);
+}
+.shoulder.right {
+  right: 0;
+  background: radial-gradient(circle at 100% 100%, transparent 15.5px, var(--ink) 16px);
+}
+.island[data-mode="hidden"] .shoulder,
+.island[data-mode="peek"] .shoulder,
+.island[data-mode="rest"] .shoulder {
+  display: none;
+}
+.island-body {
+  position: relative;
+  background: var(--ink);
+  border-radius: 0 0 var(--r) var(--r);
+  transition: box-shadow 0.3s;
+}
+.island[data-mode="home"] .island-body {
+  padding: 12px 14px 22px;
+}
+.island[data-mode="small"] .island-body {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 6px 14px 6px 62px;
+  border-radius: 0 0 24px 24px;
+}
+.island[data-mode="hidden"] .island-body,
+.island[data-mode="peek"] .island-body {
+  width: 68px;
+  height: 6px;
+  margin: 0 auto;
+  padding: 0;
+  border-radius: 0 0 6px 6px;
+  overflow: hidden;
+}
+.island[data-mode="rest"] .island-body {
+  position: absolute;
+  inset: 0;
+  width: 80px;
+  height: 52px;
+  margin: 0;
+  padding: 0;
+  border-radius: 0;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='52' viewBox='0 0 80 52'%3E%3Cpath d='M4 0H76V2Q76 6 72 6H67Q61 6 60 10A25 25 0 1 1 20 10Q19 6 13 6H8Q4 6 4 2Z' fill='%23111216'/%3E%3C/svg%3E") no-repeat;
+  overflow: visible;
+}
+/* the line along the lip takes the worst tone */
+.island[data-tone="good"] .island-body {
+  box-shadow: 0 2px 0 var(--good), 0 8px 18px color-mix(in srgb, var(--good) 22%, transparent);
+}
+.island[data-tone="warn"] .island-body {
+  box-shadow: 0 2px 0 var(--warn), 0 8px 18px color-mix(in srgb, var(--warn) 24%, transparent);
+}
+.island[data-tone="danger"] .island-body {
+  box-shadow: 0 2px 0 var(--danger), 0 8px 18px color-mix(in srgb, var(--danger) 30%, transparent);
+}
+.island[data-mode="hidden"] .island-body,
+.island[data-mode="peek"] .island-body {
+  box-shadow: none;
+}
+
+/* the avatar perches on the lip */
+.perch {
+  position: absolute;
+  z-index: 2;
+  padding: 4px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--ink);
+  line-height: 0;
+  cursor: grab;
+  touch-action: none;
+}
+.island[data-dragging="on"] .perch {
+  cursor: grabbing;
+}
+.perch:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.avatar-slot {
+  width: var(--perch-size, 40px);
+  height: var(--perch-size, 40px);
+  transition: width 0.2s, height 0.2s;
+}
+.avatar {
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
+}
+.island[data-mode="home"] .perch {
+  --perch-size: 52px;
+  left: 52px;
+  bottom: 6px;
+}
+.island[data-mode="small"] .perch {
+  --perch-size: 34px;
+  left: 26px;
+  top: 22px;
+  padding: 3px;
+}
+.island[data-mode="hidden"] .perch {
+  --perch-size: 34px;
+  left: 50%;
+  top: 6px;
+  height: 16px;
+  padding: 0;
+  overflow: hidden;
+  transform: translateX(-50%);
+  background: none;
+  border-radius: 0;
+}
+
+.island[data-mode="rest"] .perch {
+  --perch-size: 44px;
+  left: 50%;
+  top: 3px;
+  padding: 0;
+  transform: translateX(-50%);
+  background: none;
+}
+/* asleep: a couple of z drift up beside the avatar (one cheap, compositor-only animation) */
+.island[data-mode="rest"][data-asleep="on"]::before,
+.island[data-mode="rest"][data-asleep="on"]::after {
+  content: "z";
+  position: absolute;
+  z-index: 3;
+  color: #aab2c9;
+  font-weight: 700;
+  pointer-events: none;
+  animation: zzz 3.2s ease-in-out infinite;
+}
+.island[data-mode="rest"][data-asleep="on"]::before {
+  left: 60px;
+  top: 26px;
+  font-size: 12px;
+}
+.island[data-mode="rest"][data-asleep="on"]::after {
+  left: 68px;
+  top: 14px;
+  font-size: 9px;
+  animation-delay: 1.4s;
+}
+@keyframes zzz {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .island[data-mode="rest"][data-asleep="on"]::before,
+  .island[data-mode="rest"][data-asleep="on"]::after {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+/* peeking: the whole avatar slides in from above the screen edge, then back out */
+.island[data-mode="peek"] .perch {
+  --perch-size: 38px;
+  left: 50%;
+  top: 8px;
+  padding: 3px;
+  transform: translateX(-50%);
+  animation: peek-in 420ms cubic-bezier(0.3, 1.5, 0.5, 1) both;
+}
+.island[data-mode="peek"][data-peek="out"] .perch {
+  animation: peek-out 380ms cubic-bezier(0.5, 0, 0.8, 0.4) both;
+}
+@keyframes peek-in {
+  from {
+    transform: translateX(-50%) translateY(-56px);
+  }
+  to {
+    transform: translateX(-50%) translateY(0);
+  }
+}
+@keyframes peek-out {
+  from {
+    transform: translateX(-50%) translateY(0);
+  }
+  to {
+    transform: translateX(-50%) translateY(-56px);
+  }
+}
+
+/* header and chips ------------------------------------------------------------ */
+.island-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 4px;
+}
+.island-label {
+  flex: 1;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.island-label[data-state="attention"] {
+  color: #ff9d92;
+}
+.island-label[data-state="music"] {
+  color: #8fe8cb;
+}
+.icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.icon-btn:hover:not(:disabled) {
+  background: var(--bg-3);
+  color: var(--text);
+}
+.icon-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.icon-btn:focus-visible,
+.btn:focus-visible,
+.link-btn:focus-visible,
+.input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.chip {
+  --c: var(--pill-accent, #8fb4ff);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 170px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--c) 20%, var(--ink));
+  color: color-mix(in srgb, var(--c) 62%, white);
+  font-size: 12px;
+  font-weight: 600;
+}
+.chip[data-kind="now-playing"] {
+  --c: var(--pill-accent, #6fd9b8);
+}
+.chip[data-tone="good"] {
+  --c: var(--good);
+}
+.chip[data-tone="warn"] {
+  --c: var(--warn);
+}
+.chip[data-tone="danger"] {
+  --c: var(--danger);
+}
+.chip-quiet {
+  --c: #9aa1b5;
+}
+.chip-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* pills ----------------------------------------------------------------------- */
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+  max-height: 520px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.pill {
+  min-width: 0;
+  --c: var(--pill-accent, #8fb4ff);
+  background: color-mix(in srgb, var(--c) 16%, #14161c);
+  border-radius: 22px;
+  padding: 14px;
+}
+.pill-now-playing {
+  --c: var(--pill-accent, #6fd9b8);
+}
+.pill[data-tone="good"] {
+  --c: var(--good);
+}
+.pill[data-tone="warn"] {
+  --c: var(--warn);
+}
+.pill[data-tone="danger"] {
+  --c: var(--danger);
+}
+.pill-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: color-mix(in srgb, var(--c) 70%, white);
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.pill-icon {
+  display: inline-grid;
+  place-items: center;
+}
+.stat-value {
+  color: color-mix(in srgb, var(--c) 35%, white);
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.15;
+}
+.stat-unit {
+  font-size: 14px;
+  opacity: 0.7;
+  font-weight: 400;
+}
+.chart-period {
+  font-size: 12px;
+  opacity: 0.6;
+  font-weight: 400;
+}
+.chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 56px;
+  margin: 8px 0 6px;
+}
+.chart-bar {
+  flex: 1;
+  min-width: 0;
+  border-radius: 4px 4px 2px 2px;
+  background: color-mix(in srgb, var(--c) 70%, #111216);
+}
+.chart-bar.now {
+  background: color-mix(in srgb, var(--c) 45%, white);
+}
+.stat-label,
+.list-empty {
+  color: color-mix(in srgb, var(--c) 45%, var(--muted));
+  font-size: 12px;
+}
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.list-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+.list-row.link {
+  margin: 0 -6px;
+  padding: 3px 6px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.list-row.link:hover,
+.list-row.link:focus-visible {
+  background: color-mix(in srgb, var(--c) 18%, transparent);
+  outline: none;
+}
+.list-title {
+  flex: 0 1 auto;
+  min-width: 0; /* lets a long title shrink and show the ellipsis instead of running off the card */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.list-subtitle {
+  color: color-mix(in srgb, var(--c) 45%, var(--muted));
+  flex: none;
+}
+.pill-notice {
+  margin-top: 8px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--muted);
+  font-size: 12px;
+  user-select: text;
+}
+
+/* now playing ------------------------------------------------------------------ */
+.pill-now-playing .pill-head {
+  display: none;
+}
+.np-player {
+  display: grid;
+  /* one column that may shrink, so a very long title is cut off instead of widening the card */
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+.np-top {
+  min-width: 0;
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+.np-art {
+  width: 68px;
+  height: 68px;
+  flex: none;
+  border-radius: 16px;
+  object-fit: cover;
+  background: color-mix(in srgb, var(--c) 30%, var(--ink));
+}
+.np-meta {
+  flex: 1;
+  min-width: 0;
+}
+.np-title {
+  color: color-mix(in srgb, var(--c) 15%, white);
+  font-size: 16px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.np-artist,
+.np-source {
+  color: color-mix(in srgb, var(--c) 60%, white);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.np-source {
+  font-size: 11px;
+  opacity: 0.75;
+}
+.np-source {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.np-source-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.np-switch {
+  flex: none;
+  padding: 1px 8px;
+  border: 1px solid color-mix(in srgb, var(--c) 45%, transparent);
+  border-radius: 999px;
+  background: transparent;
+  color: color-mix(in srgb, var(--c) 70%, white);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.np-switch[data-busy="true"] {
+  background: color-mix(in srgb, var(--c) 28%, transparent);
+  color: white;
+}
+.np-switch:hover {
+  background: color-mix(in srgb, var(--c) 40%, transparent);
+}
+.np-play {
+  width: 48px !important;
+  height: 48px !important;
+  flex: none;
+  border-radius: 50% !important;
+  background: var(--c) !important;
+  color: var(--ink) !important;
+}
+.np-play:disabled {
+  opacity: 0.4;
+}
+.np-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.np-progress .icon-btn {
+  width: 30px;
+  height: 30px;
+  color: color-mix(in srgb, var(--c) 15%, white);
+}
+.np-time {
+  font-variant-numeric: tabular-nums;
+  color: color-mix(in srgb, var(--c) 60%, white);
+  font-size: 11px;
+  min-width: 30px;
+}
+.np-time:nth-last-child(2) {
+  text-align: right;
+}
+.np-seek {
+  flex: 1;
+  accent-color: var(--c);
+  height: 16px;
+}
+.np-empty {
+  color: color-mix(in srgb, var(--c) 45%, var(--muted));
+  font-size: 12px;
+}
+
+/* settings ---------------------------------------------------------------- */
+.settings {
+  display: grid;
+  gap: 12px;
+  user-select: text;
+}
+.settings-section {
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 10px 12px;
+  display: grid;
+  gap: 8px;
+}
+.settings-title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.row-main {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.row-meta {
+  color: var(--muted);
+  font-size: 11px;
+}
+.secret {
+  display: grid;
+  gap: 6px;
+}
+.muted {
+  color: var(--muted);
+  margin: 0;
+  font-size: 12px;
+}
+.pad {
+  padding: 4px 4px 8px;
+}
+.badge {
+  font-size: 11px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--bg-3);
+}
+.badge-good {
+  color: var(--good);
+}
+.badge-warn {
+  color: var(--warn);
+}
+.input {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg-3);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+.btn {
+  background: var(--bg-3);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+.btn:hover {
+  border-color: var(--muted);
+}
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #1a1a1a;
+  font-weight: 600;
+}
+.link-btn {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--accent);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.error-list {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  color: var(--danger);
+  font-size: 12px;
+}
+.problem {
+  display: grid;
+  gap: 2px;
+}
+
+/* modal ------------------------------------------------------------------ */
+.island-body.has-modal {
+  min-height: 260px;
+  overflow: hidden;
+}
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(10, 11, 15, 0.7);
+  border-radius: 0 0 var(--r) var(--r);
+  padding: 12px;
+}
+.modal {
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px;
+  width: 100%;
+}
+.modal-title {
+  margin: 0 0 6px;
+  font-size: 14px;
+}
+.modal-line {
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+/* avatar animations -------------------------------------------------------- */
+.avatar .character {
+  transform-box: fill-box;
+  transform-origin: 50% 90%;
+}
+.avatar .eyes {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  transition: transform 0.08s ease-out;
+}
+.avatar .eyes.blink {
+  transform: scaleY(0.12);
+}
+.avatar .character[data-anim="breathe"] {
+  animation: perch-breathe calc(3.2s / var(--speed, 1)) ease-in-out infinite;
+}
+.avatar .character[data-anim="bounce"] {
+  animation: perch-bounce calc(1s / var(--speed, 1)) ease-in-out infinite;
+}
+.avatar .character[data-anim="wiggle"] {
+  animation: perch-wiggle calc(0.9s / var(--speed, 1)) ease-in-out infinite;
+}
+.avatar .character[data-anim="pulse"] {
+  animation: perch-pulse calc(1.6s / var(--speed, 1)) ease-in-out infinite;
+}
+@keyframes perch-breathe {
+  50% {
+    transform: scale(1.03, 0.97);
+  }
+}
+@keyframes perch-bounce {
+  50% {
+    transform: translateY(-6px);
+  }
+}
+@keyframes perch-wiggle {
+  25% {
+    transform: rotate(-5deg);
+  }
+  75% {
+    transform: rotate(5deg);
+  }
+}
+@keyframes perch-pulse {
+  50% {
+    transform: scale(1.07);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .avatar .character {
+    animation: none !important;
+  }
+}
+
+/* resting the pointer on the island: a ring beside the pointer and a line along the lip fill up */
+.dwell-ring {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 6;
+  width: 22px;
+  height: 22px;
+  pointer-events: none;
+}
+.dwell-ring svg {
+  display: block;
+  transform: rotate(-90deg);
+}
+.dwell-ring .track {
+  fill: var(--ink);
+  stroke: rgba(255, 255, 255, 0.18);
+  stroke-width: 3;
+}
+.dwell-ring .fill {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 1 1;
+  stroke-dashoffset: 1;
+}
+.island[data-dwell="on"] .dwell-ring .fill {
+  animation: dwell-fill var(--dwell, 900ms) linear forwards;
+}
+.island-body::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: left;
+  pointer-events: none;
+}
+.island[data-dwell="on"] .island-body::after {
+  animation: dwell-line var(--dwell, 900ms) linear forwards;
+}
+@keyframes dwell-fill {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes dwell-line {
+  to {
+    transform: scaleX(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .island[data-dwell="on"] .dwell-ring .fill,
+  .island[data-dwell="on"] .island-body::after {
+    animation-timing-function: steps(10, end);
+  }
+}
+
+/* a pill's second setting, tucked under its name */
+.pill-setting .row.sub {
+  padding-top: 0;
+  margin-left: 26px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* a pill's details: the last request and response, for working out why a value looks wrong */
+.pill-info {
+  margin-left: auto;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 10px;
+  opacity: 0.6;
+  cursor: pointer;
+}
+.pill-info:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.08);
+}
+.pill-details {
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--muted);
+  font: 11px/1.45 ui-monospace, Consolas, monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.pill-setting .var-row { gap: 8px; }
+.pill-setting .var-row .row-main { flex: 0 0 38%; min-width: 0; }
+.pill-setting .var-row .input { flex: 1; min-width: 0; font-size: 12px; padding: 4px 8px; }
+
+/* approval cards: a question with a few buttons */
+.approvals { display: grid; gap: 10px; }
+.approval { padding: 2px 0 0; }
+.approval + .approval { margin-top: 2px; padding-top: 12px; border-top: 1px solid color-mix(in srgb, var(--text) 14%, transparent); }
+.approval-failed, .approval-done { padding: 12px; border-radius: 14px; }
+.approval-title { font-size: 15px; font-weight: 700; line-height: 1.3; }
+.approval-detail { margin-top: 3px; font-size: 13px; color: color-mix(in srgb, var(--text) 78%, transparent); }
+.approval-actions { display: flex; gap: 8px; margin-top: 12px; }
+.approval-btn {
+  flex: 1;
+  min-height: 44px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--text) 40%, transparent);
+  background: transparent;
+  color: var(--text);
+  font: 600 14px inherit;
+  cursor: pointer;
+}
+.approval-btn:hover:not(:disabled), .approval-btn:focus-visible { background: color-mix(in srgb, var(--text) 12%, transparent); outline: none; }
+.approval-btn:disabled { opacity: 0.6; cursor: default; }
+.approval-btn.good { border: 0; background: #6fdcb8; color: #0d2a22; font-weight: 700; }
+.approval-btn.danger { border: 0; background: #ff9aa6; color: #3a0f16; font-weight: 700; }
+.approval-btn.warn { border: 0; background: #f2b866; color: #2a1c05; font-weight: 700; }
+.approval-btn.good:hover:not(:disabled), .approval-btn.danger:hover:not(:disabled), .approval-btn.warn:hover:not(:disabled) { filter: brightness(1.08); }
+.approval-failed { background: #3a1d22; }
+.approval + .approval.approval-failed, .approval + .approval.approval-done { border-top: 0; }
+.approval-done { display: flex; margin-top: 4px; align-items: center; gap: 10px; background: #1f332f; font-size: 14px; font-weight: 600; color: #d9f3ea; }
+.approval-check { color: #6fdcb8; font-weight: 800; }
+
+/* opening and closing: only while it happens, and only clip-path / opacity / transform */
+.island.opening .island-body { animation: island-open 240ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.island-ghost {
+  position: absolute;
+  top: 0;
+  z-index: 1;
+  pointer-events: none;
+  animation: island-close 200ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+@keyframes island-open {
+  from { clip-path: inset(0 -24px 88% -24px round 0 0 26px 26px); opacity: 0.5; transform: translateY(-6px); }
+  to { clip-path: inset(0 -24px -24px -24px round 0 0 26px 26px); opacity: 1; transform: none; }
+}
+@keyframes island-close {
+  from { clip-path: inset(0 -24px -24px -24px round 0 0 26px 26px); opacity: 1; transform: none; }
+  to { clip-path: inset(0 -24px 90% -24px round 0 0 26px 26px); opacity: 0; transform: translateY(-6px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .island.opening .island-body, .island-ghost { animation: none; }
+}
+
+/* between "asked to open" and "window is big enough": nothing is drawn, so nothing can jump */
+.island.pre-open .island-body, .island.pre-open .perch { visibility: hidden; }
+
+/* Library ---------------------------------------------------------------- */
+input.switch {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: none;
+  width: 36px;
+  height: 20px;
+  margin: 0;
+  border-radius: 10px;
+  background: #3a4155;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+input.switch::after {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #aab1c4;
+  transition: transform 0.15s, background 0.15s;
+}
+input.switch:checked { background: var(--accent); }
+input.switch:checked::after { transform: translateX(16px); background: #1a1a1a; }
+input.switch:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  input.switch, input.switch::after { transition: none; }
+}
+.pill-setting { padding: 6px 0; border-bottom: 1px solid var(--line); }
+.pill-setting:last-of-type { border-bottom: 0; }
+.pill-setting > .row { min-height: 32px; }
+.row-main.wrap { white-space: normal; overflow: visible; }
+.add-row { margin-top: 4px; }
+.add-row .btn { flex: 1; }
+.btn.dashed { background: transparent; border: 1px dashed #4a5166; border-radius: 12px; min-height: 38px; }
+.examples { display: grid; gap: 8px; margin-top: 4px; }
+.example { padding: 8px 10px; border-radius: 12px; background: var(--bg-3); }
+.example-name { font-weight: 600; }
+.settings-sub { margin: 8px 0 0; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.btn:disabled { opacity: 0.55; cursor: default; }
+
+/* local inbox */
+.pill-inbox { --c: var(--warn); }
+.approval-source { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--warn); margin-bottom: 2px; }
+.approval-dismiss { flex: 0 0 auto; padding: 0 12px; }
+.inbox-code { margin: 0; padding: 8px 10px; border-radius: 10px; background: #0d0c12; font: 11px/1.5 Consolas, "Cascadia Mono", monospace; white-space: pre-wrap; word-break: break-all; user-select: text; }

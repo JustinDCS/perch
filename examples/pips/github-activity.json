@@ -1,0 +1,20 @@
+{
+  "perch": 1,
+  "id": "github-activity",
+  "name": "GitHub activity",
+  "kind": "rest",
+  "icon": "▮",
+  "refreshSeconds": 900,
+  "variables": [
+    { "key": "owner", "label": "Repository owner", "placeholder": "tauri-apps", "default": "tauri-apps", "group": "github" },
+    { "key": "repo", "label": "Repository", "placeholder": "tauri", "default": "tauri", "group": "github" }
+  ],
+  "request": { "url": "https://api.github.com/repos/{var.owner}/{var.repo}/stats/commit_activity" },
+  "display": {
+    "layout": "chart",
+    "values": ["[50].days", "[51].days"],
+    "unit": "commits",
+    "period": "last 2 weeks",
+    "label": "Commits per day (public repos need no secret)"
+  }
+}

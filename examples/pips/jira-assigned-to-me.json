@@ -1,0 +1,31 @@
+{
+  "perch": 1,
+  "id": "jira-assigned",
+  "name": "Assigned to me",
+  "kind": "rest",
+  "icon": "🎫",
+  "accent": "#a9c4ff",
+  "refreshSeconds": 120,
+  "variables": [
+    { "key": "site", "label": "Jira site", "type": "host", "placeholder": "your-site.atlassian.net", "group": "jira" },
+    { "key": "email", "label": "Atlassian email", "placeholder": "you@example.com", "group": "jira" },
+    {
+      "key": "jql",
+      "label": "Search (JQL)",
+      "default": "assignee = currentUser() AND statusCategory != Done ORDER BY updated DESC"
+    }
+  ],
+  "request": {
+    "url": "https://{var.site}/rest/api/3/search/jql?jql={var.jql}&fields=summary,status&maxResults=5",
+    "method": "GET",
+    "auth": { "type": "basic", "user": "{var.email}", "secret": "jira-token" }
+  },
+  "display": {
+    "layout": "list",
+    "items": "issues",
+    "title": "{key} {fields.summary}",
+    "subtitle": "{fields.status.name}",
+    "link": "https://{var.site}/browse/{key}",
+    "limit": 5
+  }
+}

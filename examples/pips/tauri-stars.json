@@ -1,0 +1,14 @@
+{
+  "perch": 1,
+  "id": "tauri-stars",
+  "name": "Tauri on GitHub",
+  "kind": "rest",
+  "icon": "★",
+  "refreshSeconds": 300,
+  "request": { "url": "https://api.github.com/repos/tauri-apps/tauri" },
+  "display": {
+    "layout": "stat",
+    "value": "stargazers_count",
+    "label": "GitHub stars (public API, no secret needed)"
+  }
+}

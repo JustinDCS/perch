@@ -1,0 +1,30 @@
+{
+  "perch": 1,
+  "id": "github-activity-account",
+  "name": "GitHub activity (whole account)",
+  "kind": "rest",
+  "icon": "▮",
+  "refreshSeconds": 900,
+  "variables": [
+    { "key": "user", "label": "GitHub username", "placeholder": "your-username", "group": "github" }
+  ],
+  "request": {
+    "url": "https://api.github.com/graphql",
+    "method": "POST",
+    "auth": { "type": "bearer", "secret": "github-token" },
+    "body": {
+      "query": "query { user(login: \"{var.user}\") { contributionsCollection { contributionCalendar { weeks { contributionDays { contributionCount } } } } } }"
+    }
+  },
+  "display": {
+    "layout": "chart",
+    "values": [
+      "data.user.contributionsCollection.contributionCalendar.weeks[-2].contributionDays",
+      "data.user.contributionsCollection.contributionCalendar.weeks[-1].contributionDays"
+    ],
+    "field": "contributionCount",
+    "unit": "changes",
+    "period": "last 2 weeks",
+    "label": "Commits, pull requests and reviews across all your repos"
+  }
+}

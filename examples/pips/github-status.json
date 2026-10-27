@@ -1,0 +1,15 @@
+{
+  "perch": 1,
+  "id": "github-status",
+  "name": "GitHub status",
+  "kind": "rest",
+  "refreshSeconds": 120,
+  "request": { "url": "https://www.githubstatus.com/api/v2/components.json" },
+  "display": {
+    "layout": "list",
+    "items": "components",
+    "title": "name",
+    "subtitle": "status",
+    "limit": 5
+  }
+}

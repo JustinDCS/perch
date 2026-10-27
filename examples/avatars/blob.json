@@ -1,0 +1,12 @@
+{
+  "perchAvatar": 1,
+  "name": "Blob",
+  "body": { "shape": "circle", "width": 74, "height": 70, "color": "#8b7bff" },
+  "eyes": { "color": "#ffffff", "size": 12, "spacing": 28, "y": 44, "blinkSeconds": [2, 5] },
+  "mouth": { "color": "#ffffff", "width": 14, "y": 62 },
+  "states": {
+    "idle": { "eyeOpen": 1, "mouth": 0.4, "animation": "pulse", "speed": 0.6 },
+    "attention": { "eyeOpen": 1.35, "mouth": -0.5, "bodyColor": "#ff6b6b", "animation": "wiggle", "speed": 3 },
+    "music": { "eyeOpen": 0.5, "eyeOffsetY": 1, "mouth": 1, "bodyColor": "#44c8a8", "animation": "bounce", "speed": 1.8 }
+  }
+}
