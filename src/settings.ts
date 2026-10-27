@@ -67,6 +67,25 @@ export function setStayVisible(value: boolean): void {
   }
 }
 
+const AUTO_UPDATE_KEY = "perch.autoUpdate";
+
+/** Install new versions by themselves? On unless the user turned it off. */
+export function getAutoUpdate(): boolean {
+  try {
+    return localStorage.getItem(AUTO_UPDATE_KEY) !== "0";
+  } catch {
+    return true;
+  }
+}
+
+export function setAutoUpdate(value: boolean): void {
+  try {
+    localStorage.setItem(AUTO_UPDATE_KEY, value ? "1" : "0");
+  } catch {
+    // ignore
+  }
+}
+
 // ---- where the island sits -----------------------------------------------------------------
 
 

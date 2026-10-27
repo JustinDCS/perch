@@ -282,7 +282,7 @@ function createMock(): Ipc {
         items: [],
         issues: [
           { key: "DD-107", fields: { summary: "Perch companion app", status: { name: "In Progress" } } },
-          { key: "DD-91", fields: { summary: "Invoice export for JAE", status: { name: "To Do" } } },
+          { key: "DD-91", fields: { summary: "Invoice export fix", status: { name: "To Do" } } },
           { key: "DD-88", fields: { summary: "Review the SEO scan results page", status: { name: "In Review" } } },
         ],
       };

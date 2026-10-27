@@ -71,6 +71,18 @@ pub fn run() {
             #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
 
+            // self-updating exists only in builds made with tauri.updater.conf.json (it carries the
+            // public key); a plugin that fails to start must never stop Perch itself
+            #[cfg(any(windows, target_os = "macos", target_os = "linux"))]
+            if app.config().plugins.0.contains_key("updater") {
+                let handle = app.handle();
+                if handle.plugin(tauri_plugin_updater::Builder::new().build()).is_err()
+                    || handle.plugin(tauri_plugin_process::init()).is_err()
+                {
+                    eprintln!("Perch: the updater could not start; updates are off");
+                }
+            }
+
             inbox::autostart(app.handle());
             place_at_top_centre(app.handle());
 

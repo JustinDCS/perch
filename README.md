@@ -74,6 +74,19 @@ Perch builds for macOS 12+ (Apple Silicon and Intel, one universal app). Prerequ
 * **Placement.** The island hangs from the top edge of the screen, under the menu bar or notch. There is no Dock icon; use the menu bar icon for Show / hide, Library and Quit.
 * **Secrets** go in the macOS Keychain. Allow access if it asks.
 
+## Releasing and auto-update
+
+Installed copies of Perch check for a newer version half a minute after start and every six hours, and install it by themselves (Library → Updates turns that off or checks by hand). Updates are signed, so Perch only accepts files made with the project's private key. They are fetched from this repository's latest published release, so the repository has to be public.
+
+One-off setup:
+
+1. Make a signing key on your own PC and keep the private file safe: `npx tauri signer generate -w ~/.tauri/perch.key` (set a password). Paste the **public** key into `src-tauri/tauri.updater.conf.json` in place of `REPLACE_WITH_PUBLIC_KEY`.
+2. In this repo's Settings → Secrets and variables → Actions, add `TAURI_SIGNING_PRIVATE_KEY` (the key file's contents) and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`.
+
+To release: bump the version (`package.json`, `src-tauri/tauri.conf.json`, both `Cargo.toml`), push a tag like `v0.1.3`, wait for the **release** run, then open the draft under Releases and **Publish** it. Publishing is what lets installed copies see it.
+
+Without the key, the release run still builds plain installers into a draft pre-release. Developer and local builds have no updater; Library → Updates says so.
+
 ## Your config folder
 
 Right-click the tray icon → **Open config folder** (it is `%APPDATA%\co.za.dyncomp.perch`):
@@ -251,9 +264,8 @@ examples/            sample pills and avatars (all validated by the test suite)
 * Obsidian pill (note create via `obsidian://` / vault files, note search)
 * Shuffle, repeat, volume and "add to library" controls
 * Avatar configurator, extra avatar parts
-* Signed and notarised installers, and auto-update
+* Signed and notarised installers
 
 ## Licence
 
-Not chosen yet; it will be decided before the repository goes public. Perch contains **no code from**
-`bible-strong-avatar-lab` (AGPL-3.0): the avatar format and renderer here are original.
+[MIT](LICENSE). Perch contains **no code from** `bible-strong-avatar-lab` (AGPL-3.0): the avatar format and renderer here are original.

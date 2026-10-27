@@ -37,6 +37,8 @@ import {
   setChipShown,
   setGazeMode,
   setStayVisible,
+  getAutoUpdate,
+  setAutoUpdate,
   setOpenDelay,
   setPeeks,
   setPillEnabled,
@@ -48,6 +50,7 @@ import {
 } from "../settings";
 import { clear, h } from "./dom";
 import { icon } from "./icons";
+import { checkForUpdate, currentVersion } from "../updates";
 import { confirmDialog } from "./modal";
 import { visibleChips } from "./chips";
 import { fracForCentre, monitorAt, monitorKey, resolvePlacement, windowOrigin, type MonitorBox } from "./placement";
@@ -68,6 +71,8 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   let avatarView: AvatarView | null = null;
   let musicPlaying = false;
   let stayVisible = getStayVisible();
+  let autoUpdate = getAutoUpdate();
+  const appVersion = await currentVersion();
   const tones = new Map<string, Tone>();
   const chips = new Map<string, Chip>();
 
@@ -628,6 +633,13 @@ export async function mountApp(root: HTMLElement): Promise<void> {
           setChipShown(id, shown);
           refresh();
         },
+        appVersion,
+        autoUpdate,
+        onAutoUpdateChange(value) {
+          autoUpdate = value;
+          setAutoUpdate(value);
+        },
+        onCheckUpdate: (install) => checkForUpdate(install),
         stayVisible,
         onStayVisibleChange(value) {
           stayVisible = value;
@@ -845,4 +857,12 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   renderAvatar();
   showPills();
   schedulePeek();
+
+  // updates: look half a minute after start-up and then every six hours; with the automatic
+  // setting on, a newer version is installed and Perch restarts
+  if (inTauri) {
+    const lookForUpdate = () => void checkForUpdate(autoUpdate);
+    setTimeout(lookForUpdate, 30_000);
+    setInterval(lookForUpdate, 6 * 60 * 60 * 1000);
+  }
 }

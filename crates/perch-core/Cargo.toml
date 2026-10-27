@@ -4,6 +4,7 @@ version = "0.1.2"
 edition = "2021"
 description = "Platform-independent policy and storage rules for Perch"
 publish = false
+license = "MIT"
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }

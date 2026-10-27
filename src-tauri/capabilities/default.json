@@ -17,6 +17,8 @@
     "core:window:allow-primary-monitor",
     "core:window:allow-cursor-position",
     "core:window:allow-outer-position",
-    "core:window:allow-outer-size"
+    "core:window:allow-outer-size",
+    "updater:default",
+    "process:allow-restart"
   ]
 }

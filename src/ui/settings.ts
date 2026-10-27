@@ -4,6 +4,7 @@ import { errorText, ipc } from "../ipc";
 import { secretsOf } from "../pills/manifest";
 import type { PillVariable, RestPill } from "../pills/types";
 import { storeKey, type Store } from "../pills/variables";
+import type { UpdateResult } from "../updates";
 import { SOUND_MODES, type SoundMode } from "../sound/sounds";
 import { GAZE_MODES, getDisabledPills, getHiddenChips, OPEN_DELAYS, type GazeMode } from "../settings";
 import { clear, h } from "./dom";
@@ -24,6 +25,11 @@ export interface SettingsContext {
   onVariableChange(pill: RestPill, variable: PillVariable, value: string): string;
   stayVisible: boolean;
   onStayVisibleChange(value: boolean): void;
+  appVersion: string;
+  autoUpdate: boolean;
+  onAutoUpdateChange(value: boolean): void;
+  /** Look for a newer version; with `install`, install it and restart. */
+  onCheckUpdate(install: boolean): Promise<UpdateResult>;
   soundMode: SoundMode;
   onSoundModeChange(mode: SoundMode): void;
   soundVolume: number;
@@ -58,6 +64,26 @@ export function renderSettings(ctx: SettingsContext): HTMLElement {
   const quietBox = h("input", { type: "checkbox", class: "switch", attrs: { "aria-label": "Stay visible when nothing is happening" } });
   quietBox.checked = ctx.stayVisible;
   quietBox.addEventListener("change", () => ctx.onStayVisibleChange(quietBox.checked));
+
+  const autoBox = h("input", { type: "checkbox", class: "switch", attrs: { "aria-label": "Install updates automatically" } });
+  autoBox.checked = ctx.autoUpdate;
+  autoBox.addEventListener("change", () => ctx.onAutoUpdateChange(autoBox.checked));
+  const updateStatus = h("p", { class: "muted", attrs: { role: "status" }, text: `Perch ${ctx.appVersion}` });
+  const installBtn = h("button", { class: "btn", text: "Install and restart" });
+  installBtn.hidden = true;
+  const checkBtn = h("button", { class: "btn", text: "Check for updates" });
+  async function runUpdate(install: boolean): Promise<void> {
+    checkBtn.disabled = true;
+    installBtn.disabled = true;
+    updateStatus.textContent = install ? "Installing…" : "Checking…";
+    const result = await ctx.onCheckUpdate(install);
+    updateStatus.textContent = result.text;
+    installBtn.hidden = result.state !== "available";
+    checkBtn.disabled = false;
+    installBtn.disabled = false;
+  }
+  checkBtn.addEventListener("click", () => void runUpdate(false));
+  installBtn.addEventListener("click", () => void runUpdate(true));
 
   const soundSelect = h("select", { class: "input", attrs: { "aria-label": "Sounds" } });
   for (const m of SOUND_MODES) soundSelect.append(h("option", { text: m.label, value: m.mode }));
@@ -305,6 +331,12 @@ export function renderSettings(ctx: SettingsContext): HTMLElement {
       h("label", { class: "row" }, h("span", { class: "row-main wrap", text: "Look around and wink now and then when quiet" }), peekBox),
       h("p", { class: "muted", text: "Drag the avatar to move Perch along the top of any screen." }),
       h("div", { class: "row" }, h("button", { class: "btn", text: "Centre on this screen", on: { click: () => ctx.onResetPosition() } })),
+    ),
+    section(
+      "Updates",
+      h("label", { class: "row" }, h("span", { class: "row-main wrap", text: "Install updates automatically" }), autoBox),
+      updateStatus,
+      h("div", { class: "row" }, checkBtn, installBtn),
     ),
     section(
       "Sounds",
