@@ -6,6 +6,11 @@ on:
   pull_request:
   workflow_dispatch:
 
+# a new push cancels the run still going for the same branch
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     name: Tests
@@ -25,6 +30,9 @@ jobs:
 
   bundle:
     name: Build (${{ matrix.name }})
+    # Installer builds are slow, and macOS minutes count ten times on a private repository, so they
+    # only run when started by hand (Actions -> build -> Run workflow). Releases build on tags.
+    if: github.event_name == 'workflow_dispatch'
     needs: test
     strategy:
       fail-fast: false
