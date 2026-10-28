@@ -613,6 +613,7 @@ input[type="checkbox"] {
 /* settings ---------------------------------------------------------------- */
 .settings {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
   user-select: text;
 }
@@ -622,6 +623,8 @@ input[type="checkbox"] {
   border-radius: 14px;
   padding: 10px 12px;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
   gap: 8px;
 }
 .settings-title {
@@ -1078,3 +1081,8 @@ input.switch:focus-visible { outline: 2px solid var(--text); outline-offset: 2px
     animation: none;
   }
 }
+
+/* settings rows never push past the card: buttons and inputs shrink and wrap instead */
+.row > .switch, .row > .row-meta, .row > .btn { flex: none; }
+.row.sub.season-preview, .add-row { flex-wrap: wrap; }
+.add-row .btn { min-width: 0; }
