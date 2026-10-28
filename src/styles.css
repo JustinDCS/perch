@@ -1011,3 +1011,70 @@ input.switch:focus-visible { outline: 2px solid var(--text); outline-offset: 2px
 .approval-source { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--warn); margin-bottom: 2px; }
 .approval-dismiss { flex: 0 0 auto; padding: 0 12px; }
 .inbox-code { margin: 0; padding: 8px 10px; border-radius: 10px; background: #0d0c12; font: 11px/1.5 Consolas, "Cascadia Mono", monospace; white-space: pre-wrap; word-break: break-all; user-select: text; }
+
+/* ---- seasonal looks: a hat, a few ambient bits, and a short move in place of the wink -------- */
+.season-hat,
+.season-fx {
+  display: none;
+}
+.island[data-mode="rest"][data-season] {
+  height: 58px;
+}
+.island[data-mode="rest"][data-season] .island-body {
+  height: 58px;
+  background: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2780%27%20height%3D%2758%27%20viewBox%3D%270%200%2080%2058%27%3E%3Cpath%20d%3D%27M4%2C0%20H76%20V2%20Q76%2C6%2072%2C6%20H62%20Q56%2C6%2055%2C11%20A25%2025%200%201%201%2025%2C11%20Q24%2C6%2018%2C6%20H8%20Q4%2C6%204%2C2%20Z%27%20fill%3D%27%23111216%27%2F%3E%3C%2Fsvg%3E") no-repeat;
+}
+.island[data-mode="rest"][data-season] .perch {
+  top: 9px;
+}
+.island[data-mode="rest"][data-season][data-asleep="on"]::before {
+  top: 32px;
+}
+.island[data-mode="rest"][data-season][data-asleep="on"]::after {
+  top: 20px;
+}
+.island[data-mode="rest"][data-season] .season-hat {
+  display: block;
+  position: absolute;
+  left: -18px;
+  top: -9px;
+  width: 80px;
+  height: 58px;
+  pointer-events: none;
+}
+.island[data-mode="rest"][data-season] .season-fx {
+  display: block;
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+}
+.season-art {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+}
+.season-hat .season-art {
+  left: 0;
+  top: 0;
+}
+.season-ambient {
+  animation: season-drift 5s ease-in-out infinite;
+}
+.island[data-asleep="on"] .season-ambient {
+  animation-play-state: paused;
+}
+@keyframes season-drift {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(2px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .season-ambient {
+    animation: none;
+  }
+}

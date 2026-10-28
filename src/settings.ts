@@ -276,3 +276,22 @@ export function setPillVar(key: string, value: string): void {
     // ignore: the value just will not persist
   }
 }
+
+const SEASON_KEY = "perch.seasons";
+
+/** Seasonal looks follow the calendar ("auto") unless switched off. */
+export function getSeasonSetting(): "auto" | "off" {
+  try {
+    return localStorage.getItem(SEASON_KEY) === "off" ? "off" : "auto";
+  } catch {
+    return "auto";
+  }
+}
+
+export function setSeasonSetting(value: "auto" | "off"): void {
+  try {
+    localStorage.setItem(SEASON_KEY, value);
+  } catch {
+    // ignore
+  }
+}

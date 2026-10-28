@@ -5,6 +5,7 @@ import { secretsOf } from "../pills/manifest";
 import type { PillVariable, RestPill } from "../pills/types";
 import { storeKey, type Store } from "../pills/variables";
 import type { UpdateResult } from "../updates";
+import { SEASONS, type Season, type SeasonSetting } from "../seasons";
 import { SOUND_MODES, type SoundMode } from "../sound/sounds";
 import { GAZE_MODES, getDisabledPills, getHiddenChips, OPEN_DELAYS, type GazeMode } from "../settings";
 import { clear, h } from "./dom";
@@ -35,6 +36,10 @@ export interface SettingsContext {
   soundVolume: number;
   onSoundVolumeChange(volume: number): void;
   onSoundTest(): void;
+  seasons: SeasonSetting;
+  onSeasonsChange(value: SeasonSetting): void;
+  /** Show a season for a minute, whatever the date. */
+  onSeasonPreview(season: Season): void;
   peeks: boolean;
   onPeeksChange(value: boolean): void;
   gazeMode: GazeMode;
@@ -96,6 +101,21 @@ export function renderSettings(ctx: SettingsContext): HTMLElement {
   const peekBox = h("input", { type: "checkbox", class: "switch", attrs: { "aria-label": "Look around and wink now and then when quiet" } });
   peekBox.checked = ctx.peeks;
   peekBox.addEventListener("change", () => ctx.onPeeksChange(peekBox.checked));
+
+  const seasonSelect = h("select", { class: "input", attrs: { "aria-label": "Seasonal looks" } });
+  seasonSelect.append(h("option", { text: "Auto (follow the dates)", value: "auto" }), h("option", { text: "Off", value: "off" }));
+  seasonSelect.value = ctx.seasons;
+  seasonSelect.addEventListener("change", () => ctx.onSeasonsChange(seasonSelect.value as SeasonSetting));
+  const seasonPreview = h(
+    "div",
+    { class: "row sub season-preview" },
+    h("span", { class: "row-main", text: "Preview for a minute" }),
+    ...SEASONS.map((s) => {
+      const b = h("button", { class: "btn", text: s.label, title: s.dates });
+      b.addEventListener("click", () => ctx.onSeasonPreview(s.id));
+      return b;
+    }),
+  );
 
   const gazeSelect = h("select", { class: "input", attrs: { "aria-label": "Eyes follow the pointer" } });
   for (const g of GAZE_MODES) gazeSelect.append(h("option", { text: g.label, value: g.mode }));
@@ -329,6 +349,8 @@ export function renderSettings(ctx: SettingsContext): HTMLElement {
       h("label", { class: "row" }, h("span", { class: "row-main wrap", text: "Eyes follow the pointer" }), gazeSelect),
       h("label", { class: "row" }, h("span", { class: "row-main wrap", text: "Stay visible when nothing is happening (off: shrink to a sliver)" }), quietBox),
       h("label", { class: "row" }, h("span", { class: "row-main wrap", text: "Look around and wink now and then when quiet" }), peekBox),
+      h("label", { class: "row" }, h("span", { class: "row-main wrap", text: "Seasonal looks" }), seasonSelect),
+      seasonPreview,
       h("p", { class: "muted", text: "Drag the avatar to move Perch along the top of any screen." }),
       h("div", { class: "row" }, h("button", { class: "btn", text: "Centre on this screen", on: { click: () => ctx.onResetPosition() } })),
     ),

@@ -12,6 +12,7 @@ import { listen } from "@tauri-apps/api/event";
 import { createInbox } from "./inbox";
 import { createView } from "../avatar/any";
 import { nextPeekDelay } from "../avatar/life";
+import { AMBIENT, HATS, MOVES, seasonOn, svgLayer, useSeasonMove, type Season } from "../seasons";
 import type { AvatarView } from "../avatar/renderer";
 import { createSoundPlayer } from "../sound/player";
 import type { SoundMode } from "../sound/sounds";
@@ -28,6 +29,8 @@ import {
   getGazeMode,
   getHiddenChips,
   getStayVisible,
+  getSeasonSetting,
+  setSeasonSetting,
   getOpenDelay,
   getPeeks,
   getPlacement,
@@ -89,6 +92,8 @@ export async function mountApp(root: HTMLElement): Promise<void> {
   let dragging = false;
   let gazeMode = getGazeMode();
   let peeksOn = getPeeks();
+  let seasonSetting = getSeasonSetting();
+  let seasonPreview: { season: Season; until: number } | undefined;
   let playingSources = 0;
   let soundMode: SoundMode = getSoundMode();
   let soundVolume = getSoundVolume();
@@ -101,7 +106,13 @@ export async function mountApp(root: HTMLElement): Promise<void> {
 
   // ---- layout ------------------------------------------------------------------------------
   const avatarSlot = h("div", { class: "avatar-slot" });
-  const perch = h("button", { class: "perch", title: "Click to keep open, drag to move", aria: { label: "Keep open", pressed: "false" } }, avatarSlot);
+  // seasonal hat: drawn over the avatar, so it works with any avatar and moves with it
+  const hatLayer = h("span", { class: "season-hat", aria: { hidden: "true" } });
+  const perch = h("button", { class: "perch", title: "Click to keep open, drag to move", aria: { label: "Keep open", pressed: "false" } }, avatarSlot, hatLayer);
+  // ambient bits (bats, snow...) and the season's move are drawn here, over the resting tab
+  const fxLayer = h("div", { class: "season-fx", aria: { hidden: "true" } });
+  const moveLayer = h("div", { class: "season-move", aria: { hidden: "true" } });
+  fxLayer.append(moveLayer);
   const label = h("div", { class: "island-label" });
   const settingsBtn = h("button", { class: "icon-btn", title: "Library", aria: { label: "Library" } });
   const collapseBtn = h("button", { class: "icon-btn", title: "Collapse", aria: { label: "Collapse" } }, icon("up", 18));
@@ -116,6 +127,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     h("div", { class: "shoulder right" }),
     islandBody,
     perch,
+    fxLayer,
   );
   // shows how long is left before the island opens; it follows the pointer
   const ring = h("div", { class: "dwell-ring", hidden: true, aria: { hidden: "true" } });
@@ -294,6 +306,89 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     return mode;
   }
 
+  // ---- seasons -----------------------------------------------------------------------------
+  function activeSeason(): Season | undefined {
+    if (seasonPreview && Date.now() < seasonPreview.until) return seasonPreview.season;
+    seasonPreview = undefined;
+    return seasonSetting === "auto" ? seasonOn(new Date()) : undefined;
+  }
+
+  let shownSeason: Season | undefined;
+  let moveAnims: Animation[] = [];
+  const calmMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+
+  /** Hat and ambient bits show while Perch is resting out on the ledge in a season. */
+  function paintSeason(mode: Mode): void {
+    const season = mode === "rest" ? activeSeason() : undefined;
+    if (season !== shownSeason) {
+      shownSeason = season;
+      // our own constant drawings, never user text
+      hatLayer.innerHTML = season ? svgLayer(HATS[season], "season-art") : "";
+      for (const old of fxLayer.querySelectorAll(".season-ambient")) old.remove();
+      if (season) fxLayer.insertAdjacentHTML("afterbegin", svgLayer(AMBIENT[season], "season-art season-ambient"));
+    }
+    if (season) island.dataset.season = season;
+    else delete island.dataset.season;
+    if (!season || mode !== "rest") stopMove();
+  }
+
+  function stopMove(): void {
+    for (const a of moveAnims) a.cancel();
+    moveAnims = [];
+    moveLayer.replaceChildren();
+  }
+
+  /** The season's short move, in place of the wink. */
+  function playMove(season: Season, at: (ms: number, fn: () => void) => void): void {
+    const move = MOVES[season];
+    const calm = calmMotion();
+    stopMove();
+    moveLayer.insertAdjacentHTML("beforeend", move.parts.map(([art]) => svgLayer(art, "season-art")).join(""));
+    const els = [...moveLayer.children] as HTMLElement[];
+    els.forEach((el, i) => {
+      const [, from, to] = move.parts[i]!;
+      el.style.opacity = "0";
+      const eps = Math.min(0.001, (to - from) / 4);
+      moveAnims.push(
+        el.animate(
+          [
+            { opacity: 0, offset: 0 },
+            { opacity: 0, offset: from },
+            { opacity: 1, offset: from + eps },
+            { opacity: 1, offset: to - eps },
+            { opacity: 0, offset: to },
+            { opacity: 0, offset: 1 },
+          ],
+          { duration: move.ms, fill: "forwards" },
+        ),
+      );
+    });
+    if (!calm && move.body.length > 1) {
+      moveAnims.push(
+        perch.animate(
+          move.body.map(([offset, y]) => ({ offset, transform: `translateX(-50%) translateY(${y}px)`, easing: "ease-in-out" })),
+          { duration: move.ms },
+        ),
+      );
+    }
+    for (const [t, what] of move.eyes) {
+      at(t * move.ms, () => {
+        if (what === "glance-left") avatarView?.glance(-0.9, 0.2, 500);
+        else if (what === "glance-right") avatarView?.glance(0.9, 0.1, 500);
+        else if (what === "glance-down") avatarView?.glance(-0.4, 0.9, 500);
+        else if (what === "centre") avatarView?.glance(0, 0.1, 400);
+        else if (what === "wide") avatarView?.react("startle");
+        else avatarView?.react("wink");
+      });
+    }
+    at(move.soundAt * move.ms, () => sound.play(move.sound));
+    at(move.ms + 100, () => {
+      stopMove();
+      peekTimers = [];
+      schedulePeek();
+    });
+  }
+
   function cancelPeek(): void {
     for (const t of peekTimers) clearTimeout(t);
     peekTimers = [];
@@ -315,6 +410,11 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     }
     const at = (ms: number, fn: () => void) => peekTimers.push(setTimeout(fn, ms));
     if (quietMode === "rest") {
+      const season = activeSeason();
+      if (season && useSeasonMove()) {
+        playMove(season, at);
+        return;
+      }
       // already out on the ledge: just look around and wink
       avatarView?.glance(-0.9, 0.2, 700);
       at(700, () => avatarView?.glance(0.9, 0.1, 600));
@@ -414,6 +514,7 @@ export async function mountApp(root: HTMLElement): Promise<void> {
     const nextMode = currentMode();
     animateModeChange(island.dataset.mode as Mode | undefined, nextMode);
     island.dataset.mode = nextMode;
+    paintSeason(nextMode);
     perch.setAttribute("aria-pressed", String(pinned));
     perch.title = pinned ? "Let go" : "Keep open";
     perch.setAttribute("aria-label", perch.title);
@@ -640,6 +741,17 @@ export async function mountApp(root: HTMLElement): Promise<void> {
           setAutoUpdate(value);
         },
         onCheckUpdate: (install) => checkForUpdate(install),
+        seasons: seasonSetting,
+        onSeasonsChange(value) {
+          seasonSetting = value;
+          setSeasonSetting(value);
+          refresh();
+        },
+        onSeasonPreview(season) {
+          seasonPreview = { season, until: Date.now() + 60_000 };
+          refresh();
+          setTimeout(refresh, 60_500);
+        },
         stayVisible,
         onStayVisibleChange(value) {
           stayVisible = value;

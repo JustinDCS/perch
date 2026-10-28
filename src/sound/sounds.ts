@@ -2,7 +2,7 @@
 // license, ship or load. This file is pure: it describes the sounds, which ones each mode lets
 // through, and how often one may repeat. The player that makes noise is in player.ts.
 
-export type SoundName = "alert" | "open" | "track" | "start" | "grab" | "drop" | "peek" | "wink" | "sleep" | "wake";
+export type SoundName = "alert" | "open" | "track" | "start" | "grab" | "drop" | "peek" | "wink" | "sleep" | "wake" | "pop" | "boo" | "kiss" | "munch";
 
 export type SoundMode = "off" | "alerts" | "all";
 
@@ -46,6 +46,11 @@ export const SOUNDS: Record<SoundName, Note[]> = {
   wink: [note("sine", 1319, 0, 0.05, 0.28), note("sine", 1760, 0.05, 0.08, 0.28)],
   sleep: [note("sine", 440, 0, 0.7, 0.28, 220)],
   wake: [note("sine", 330, 0, 0.16, 0.35, 494)],
+  // seasonal: a pop, a spooky "boo", a little smooch, two munches
+  pop: [note("triangle", 200, 0, 0.05, 0.5, 900), note("sine", 1200, 0.05, 0.12, 0.25, 1800)],
+  boo: [note("triangle", 330, 0, 0.18, 0.4, 165), note("sine", 220, 0.18, 0.2, 0.3, 110)],
+  kiss: [note("sine", 900, 0, 0.05, 0.3, 1300), note("sine", 1500, 0.07, 0.07, 0.25, 1100)],
+  munch: [note("square", 180, 0, 0.05, 0.2, 120), note("square", 170, 0.15, 0.05, 0.2, 110)],
 };
 
 /** Smallest gap between two plays of the same sound, so nothing ever machine-guns. */
@@ -60,6 +65,10 @@ export const COOLDOWN_MS: Record<SoundName, number> = {
   wink: 8000,
   sleep: 30000,
   wake: 5000,
+  pop: 8000,
+  boo: 8000,
+  kiss: 8000,
+  munch: 8000,
 };
 
 export function allowedIn(mode: SoundMode, name: SoundName): boolean {
